@@ -1,0 +1,21 @@
+name: Keep-alive ping
+
+# Пингует free-инстанс Render каждые 5 минут, чтобы он не засыпал
+# после 15 минут без трафика. Для публичного репозитория минуты Actions бесплатны.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}   # кнопка ручного запуска в Actions
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render service
+        run: |
+          # || true — не роняем воркфлоу, еслиRender перезапускается или отвечает 503
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 https://figura-unchained-backend.onrender.com/api/version || true)
+          echo "HTTP status: ${code:-000}"
