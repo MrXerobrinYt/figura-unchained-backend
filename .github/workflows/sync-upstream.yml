@@ -1,0 +1,33 @@
+name: Sync upstream
+
+# Ежедневно подтягивает изменения из апстрима bulbat0n/figura-unchained-backend.
+# Если появились изменения — коммит и пуш; Render (autoDeploy) сам пересоберёт сервис.
+on:
+  schedule:
+    - cron: "17 4 * * *"   # ежедневно в 04:17 UTC
+  workflow_dispatch: {}     # кнопка "Run workflow" в интерфейсе для ручного запуска
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge upstream main
+        run: |
+          git config user.name "upstream-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git remote add upstream https://github.com/bulbat0n/figura-unchained-backend.git
+          git fetch upstream main
+          git merge upstream/main --no-edit
+          git push origin main
+
+      - name: Report
+        if: always()
+        run: echo "Sync attempt finished"
