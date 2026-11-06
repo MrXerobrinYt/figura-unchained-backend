@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: figura-unchained-backend
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/version
+    envVars:
+      # Render требует, чтобы сервис слушал $PORT на 0.0.0.0 (HOST берётся из переменной IP).
+      - key: PORT
+        value: "10000"
+      - key: IP
+        value: "0.0.0.0"
+      - key: DEBUG
+        value: "false"
+      - key: AVATAR_DIR
+        value: "data/avatars"
+      - key: REQUIRE_AUTH
+        value: "false"
+      - key: MAX_PING_BPS
+        value: "1000000"
+      - key: MAX_PING_SIZE
+        value: "8000"
+      - key: MAX_AVATAR_SIZE
+        value: "256000"
+      - key: MAX_AVATAR_UNPACKED_SIZE
+        value: "16777216"
+      - key: RATE_LIMIT_REQUESTS
+        value: "100"
+      - key: RATE_LIMIT_WINDOW
+        value: "60"
+      - key: RATE_LIMIT_CLEANUP_INTERVAL
+        value: "3600"
+      - key: LOGIN_RATE_LIMIT_REQUESTS
+        value: "10"
+      - key: LOGIN_RATE_LIMIT_WINDOW
+        value: "60"
+      - key: WS_MAX_CONNECTIONS_PER_IP
+        value: "5"
+      - key: WS_MAX_MESSAGES_PER_SEC
+        value: "50"
+      - key: WS_MAX_SUBS_PER_CLIENT
+        value: "256"
+      # За Render-прокси запросы приходят от лоад-балансера: доверяем X-Forwarded-For,
+      # напрямую к сервису снаружи не подключиться, спуфить заголовок некому.
+      - key: TRUSTED_PROXIES
+        value: "0.0.0.0/0, ::/0"
+      - key: CUSTOM_REAL_IP_HEADER
+        value: " "
+      - key: MIN_ADDON_VERSION
+        value: "1.9.3"
+      - key: ASSETS_UPDATE_INTERVAL_HOURS
+        value: "24"
+      - key: ASSETS_RATE_LIMIT_REQUESTS
+        value: "1000"
+      - key: ASSETS_RATE_LIMIT_WINDOW
+        value: "60"
+      - key: MAX_PRIDE_BADGE_ID
+        value: "63"
+      - key: ASSETS_REPO
+        value: "FiguraMC/Assets"
+      - key: ASSETS_REF
+        value: "main"
+      - key: GITHUB_TOKEN
+        sync: false
