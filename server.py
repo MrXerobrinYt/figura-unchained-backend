@@ -1,4 +1,5 @@
 import hashlib
+import html
 import uuid
 import os
 import re
@@ -838,6 +839,67 @@ def pride_badges_for(target_uuid):
 
 load_badges()
 
+# ======================== Сайт фамы (древо) ========================
+FAMA_PASSWORD = os.environ.get("FAMA_PASSWORD", "").strip()
+FAMA_DATA_PATH = os.path.join("data", "fam.json")
+FAMA_SEED_PATH = "fam.json"
+
+fam_state = {}
+
+def fam_clean_text(value, limit):
+    if not isinstance(value, str):
+        return ""
+    value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", value)
+    return value.strip()[:limit]
+
+def fam_clean_member(raw):
+    if not isinstance(raw, dict):
+        raise ValueError("member must be an object")
+    name = re.sub(r"\s+", " ", fam_clean_text(raw.get("name"), 48))
+    if not name:
+        raise ValueError("every member needs a name")
+    parents = []
+    for parent in (raw.get("parents") or []):
+        parent = re.sub(r"\s+", " ", fam_clean_text(parent, 48))
+        if parent and parent not in parents:
+            parents.append(parent)
+    return {
+        "name": name,
+        "role": fam_clean_text(raw.get("role"), 64),
+        "parents": parents,
+        "note": fam_clean_text(raw.get("note"), 500),
+    }
+
+def fam_sanitize(data):
+    if not isinstance(data, dict):
+        raise ValueError("data must be an object")
+    members_raw = data.get("members") or []
+    if not isinstance(members_raw, list):
+        raise ValueError("members must be a list")
+    if len(members_raw) > 200:
+        raise ValueError("too many members (max 200)")
+    return {
+        "title": fam_clean_text(data.get("title"), 60) or "Фама",
+        "tagline": fam_clean_text(data.get("tagline"), 120),
+        "description": fam_clean_text(data.get("description"), 4000),
+        "members": [fam_clean_member(m) for m in members_raw],
+    }
+
+def load_fam_state():
+    global fam_state
+    for path in (FAMA_DATA_PATH, FAMA_SEED_PATH):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = fam_sanitize(json.load(f))
+            fam_state = data
+            log_info(f"[FAMA] loaded from {path}: members={len(data['members'])}")
+            return
+        except (OSError, ValueError) as e:
+            log_warn(f"[FAMA] cannot use {path}: {e!r}")
+    fam_state = {"title": "Фама", "tagline": "", "description": "", "members": []}
+
+load_fam_state()
+
 @web.middleware
 async def security_middleware(request, handler):
     real_ip = get_real_ip(request)
@@ -1622,6 +1684,332 @@ async def cleanup_background_tasks(app):
     except asyncio.CancelledError:
         pass
 
+# ======================== Страницы фамы ========================
+FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
+
+def fam_json_safe(data):
+    # '<' -> \u003c чтобы не закрыть <script> случайно
+    return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
+
+FAMA_PAGE_STYLES = """
+:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif;padding:24px 14px 40px}
+main{max-width:1000px;margin:0 auto}
+header.t{text-align:center;margin:8px 0 26px}
+h1{margin:0;font-size:42px;letter-spacing:.04em;color:var(--gold);font-weight:600}
+.tagline{color:var(--muted);margin:6px 0 0;font-style:italic}
+.desc{white-space:pre-line;color:var(--fg);margin:14px auto 0;max-width:720px;line-height:1.6}
+hr.r{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:22px 0}
+h2{text-align:center;color:var(--gold);font-weight:500;letter-spacing:.08em;font-size:20px;margin:26px 0 14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card b{display:block;font-size:17px;color:var(--gold)}
+.card .role{display:block;color:var(--muted);font-size:13px;margin:2px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+.card .note{margin:0;white-space:pre-line;font-size:14px;line-height:1.55;color:var(--fg)}
+.card .par{margin:8px 0 0;color:var(--muted);font-size:12px}
+.card .par i{font-style:normal}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:34px;line-height:1.8;font-family:system-ui,sans-serif}
+footer a{color:var(--accent);text-decoration:none}footer a:hover{text-decoration:underline}
+footer code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
+.tree{overflow-x:auto}
+.tree ul{list-style:none;margin:0;padding:0}
+.tree li{margin:6px 0 6px 20px;padding-left:16px;position:relative}
+.tree li::before{content:'';position:absolute;top:-8px;left:0;border-left:1px solid var(--line);border-bottom:1px solid var(--line);width:12px;height:14px}
+.tree>ul>li{margin-left:0}
+.tree>ul>li::before{display:none}
+.tree .who{display:inline-block;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:8px 14px}
+.tree .who b{color:var(--gold)}
+.tree .who span{color:var(--muted);font-size:12px}
+@media(max-width:600px){h1{font-size:32px}}
+"""
+
+FAMA_PAGE_JS = """
+var fam = __FAMA_DATA__;
+document.getElementById('fam_title').textContent = fam.title || 'Фама';
+document.getElementById('tagline').textContent = fam.tagline || '';
+document.getElementById('desc').textContent = fam.description || '';
+if(!fam.tagline) document.getElementById('tagline').hidden = true;
+if(!fam.description) document.getElementById('desc').hidden = true;
+document.getElementById('updated').textContent = fam.updated || '—';
+
+var byName = {};
+var birth = {};      // член фамы -> массив детей
+fam.members.forEach(function(m){ byName[m.name] = m; });
+fam.members.forEach(function(m){
+  (m.parents||[]).forEach(function(p){
+    if(byName[p]){
+      if(!birth[p]) birth[p] = [];
+      if(birth[p].indexOf(m.name) < 0) birth[p].push(m.name);
+    }
+  });
+});
+
+// карточки участников
+var cards = document.getElementById('cards');
+fam.members.forEach(function(m){
+  var d = document.createElement('div'); d.className = 'card';
+  var b = document.createElement('b'); b.textContent = m.name; d.appendChild(b);
+  if(m.role){ var r = document.createElement('span'); r.className = 'role'; r.textContent = m.role; d.appendChild(r); }
+  if(m.note){ var n = document.createElement('p'); n.className = 'note'; n.textContent = m.note; d.appendChild(n); }
+  var ps = (m.parents||[]).filter(function(p){ return byName[p]; });
+  if(ps.length){ var pp = document.createElement('p'); pp.className = 'par';
+    pp.appendChild(document.createTextNode('родители: '));
+    ps.forEach(function(p, i){ if(i) pp.appendChild(document.createTextNode(', '));
+      var it = document.createElement('i'); it.textContent = p; pp.appendChild(it); });
+    d.appendChild(pp); }
+  cards.appendChild(d);
+});
+
+// древо (циклы отсекаем)
+var tree = document.getElementById('tree');
+function isRoot(m){ return !(m.parents||[]).some(function(p){ return byName[p]; }); }
+var roots = fam.members.filter(isRoot);
+if(!fam.members.length){ tree.textContent = 'Пока никого.'; }
+var seen = {};
+function addName(li, name){
+  var m = byName[name];
+  var w = document.createElement('div'); w.className = 'who';
+  var b = document.createElement('b'); b.textContent = m.name; w.appendChild(b);
+  if(m.role){ var s = document.createElement('span'); s.appendChild(document.createTextNode(' · ')); var i2=document.createElement('span'); i2.textContent=m.role; s.appendChild(i2); w.appendChild(s); }
+  li.appendChild(w);
+}
+function build(name, ul){
+  if(seen[name]) return; seen[name] = true;
+  var li = document.createElement('li');
+  addName(li, name);
+  var kids = birth[name] || [];
+  if(kids.length){ var sub = document.createElement('ul'); kids.forEach(function(k){ build(k, sub); }); li.appendChild(sub); }
+  ul.appendChild(li);
+}
+roots.forEach(function(m){
+  seen = {};
+  var top = document.createElement('ul');
+  build(m.name, top);
+  tree.appendChild(top);
+});
+"""
+
+FAMA_PAGE_TEMPLATE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>__TITLE__ · Древо фамы</title>
+<meta name="favicon" content="none">
+<style>__STYLES__</style>
+</head>
+<body>
+<main>
+<header class="t">
+<h1 id="fam_title"></h1>
+<p class="tagline" id="tagline"></p>
+<p class="desc" id="desc"></p>
+</header>
+<hr class="r">
+<section>
+<h2>Древо</h2>
+<div class="tree" id="tree"></div>
+</section>
+<hr class="r">
+<section>
+<h2>Участники</h2>
+<div class="cards" id="cards"></div>
+</section>
+<footer>
+обновлено: <span id="updated"></span><br>
+Это не веб-сайт: впишите адрес <code>__HOST__</code> в настройках Figura, чтобы работать в игре.<br>
+<a href="/fama/edit">редактирование (для старших фамы)</a> · <a href="/info">что это за адрес?</a>
+</footer>
+</main>
+<script>__JS__</script>
+</body>
+</html>
+"""
+
+FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+FAMA_HOST_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
+
+async def handle_root(request):
+    host = request.host if FAMA_HOST_RE.match(request.host or '') else 'your-server-address'
+    page = (FAMA_PAGE_TEMPLATE
+            .replace('__TITLE__', html.escape(fam_state.get('title') or 'Фама'))
+            .replace('__STYLES__', FAMA_PAGE_STYLES)
+            .replace('__JS__', FAMA_PAGE_JS)
+            .replace('__FAMA_DATA__', fam_json_safe(fam_state))
+            .replace('__HOST__', html.escape(host)))
+    return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
+        "Content-Security-Policy": FAMA_PAGE_CSP,
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-cache",
+    })
+
+async def handle_fama_data(request):
+    return web.json_response(fam_state)
+
+async def handle_fama_save(request):
+    if not FAMA_PASSWORD:
+        return web.json_response({"error": "Editor disabled: set FAMA_PASSWORD in .env"}, status=503)
+    ip = request['real_ip']
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid data"}, status=400)
+    if not isinstance(body, dict):
+        return web.json_response({"error": "Invalid data"}, status=400)
+    password = body.get("password")
+    if not isinstance(password, str) or not secrets.compare_digest(password, FAMA_PASSWORD):
+        log_info(f"[FAMA] save REJECT ip={ip} reason=wrong-password")
+        return web.json_response({"error": "Wrong password"}, status=403)
+    try:
+        data = fam_sanitize(body.get("data"))
+    except ValueError as e:
+        return web.json_response({"error": f"Invalid fam data: {e}"}, status=400)
+    data["updated"] = time.strftime('%Y-%m-%d %H:%M')
+    fam_state.clear()
+    fam_state.update(data)
+    try:
+        await asyncio.to_thread(save_secure_file, FAMA_DATA_PATH, json.dumps(fam_state, ensure_ascii=False, indent=2))
+    except OSError as e:
+        log_warn(f"[FAMA] disk save failed: {e!r} (page still serves the new data from memory)")
+    log_info(f"[FAMA] save OK members={len(fam_state['members'])} ip={ip}")
+    return web.json_response({"status": "success"})
+
+FAMA_EDIT_SCRIPT = """
+var fam = __FAMA_DATA__;
+var P = document.getElementById('pass');
+try { P.value = localStorage.getItem('famaPass') || ''; } catch(e) {}
+var list = document.getElementById('members');
+
+function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+function memberRow(m){
+  var row = el('div', 'mrow');
+  var name = el('input'); name.className = 'f-name'; name.placeholder = 'Имя / ник в Minecraft (обязательно)'; name.value = m.name || '';
+  var role = el('input'); role.className = 'f-role'; role.placeholder = 'Роль (Основатель, Наследник...)'; role.value = m.role || '';
+  var par = el('input'); par.className = 'f-par'; par.placeholder = 'Родители — имена через запятую'; par.value = (m.parents||[]).join(', ');
+  var note = document.createElement('textarea'); note.className = 'f-note'; note.placeholder = 'Заметка: кто такой, биография, титул...'; note.rows = 2; note.value = m.note || '';
+  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать участника';
+  del.addEventListener('click', function(){ row.remove(); });
+  row.appendChild(del); row.appendChild(name); row.appendChild(role); row.appendChild(par);
+  row.appendChild(note);
+  return row;
+}
+function addRow(m){ var r = memberRow(m || {}); list.appendChild(r); return r; }
+fam.members.forEach(function(m){ addRow(m); });
+document.getElementById('add').addEventListener('click', function(){ addRow(); list.lastChild.firstChild.nextSibling.focus(); });
+
+fam.title = fam.title || 'Фама';
+document.getElementById('title').value = fam.title;
+document.getElementById('tagline').value = fam.tagline || '';
+document.getElementById('description').value = fam.description || '';
+
+document.getElementById('save').addEventListener('click', function(){
+  var out = document.getElementById('out');
+  var members = [];
+  var names = [];
+  var dup = null;
+  Array.prototype.forEach.call(list.children, function(row){
+    var name = row.querySelector('.f-name').value.trim();
+    if(!name) return;
+    names.push(name);
+  });
+  Array.prototype.forEach.call(list.children, function(row){
+    var name = row.querySelector('.f-name').value.trim();
+    if(!name) return;
+    var parents = row.querySelector('.f-par').value.split(/[,;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    members.push({
+      name: name,
+      role: row.querySelector('.f-role').value.trim(),
+      parents: parents,
+      note: row.querySelector('.f-note').value
+    });
+  });
+  if(!fam.title && document.getElementById('title').value === '') fam.title = 'Фама';
+  var data = {
+    title: document.getElementById('title').value,
+    tagline: document.getElementById('tagline').value,
+    description: document.getElementById('description').value,
+    members: members
+  };
+  fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, data: data }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
+    .then(function(r){
+      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Главная страница уже показывает новые данные.'; }
+      else if(r.status === 403){ out.textContent = 'Неверный пароль.'; }
+      else { out.textContent = 'Ошибка: ' + (r.json && r.json.error ? r.json.error : r.status); }
+    })
+    .catch(function(){ out.textContent = 'Сеть недоступна.'; });
+});
+"""
+
+FAMA_EDIT_PAGE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Редактор фамы</title>
+<style>
+:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+main{max-width:860px;margin:0 auto}
+h1{color:var(--gold);font-size:26px;margin:0 0 4px}
+p.h{color:var(--muted);margin:0 0 18px;font-size:13px}
+input,textarea{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;margin:4px 0}
+label{display:block;color:var(--muted);font-size:12px;margin-top:12px;text-transform:uppercase;letter-spacing:.05em}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+.mrow{position:relative;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;grid-template-columns:1fr 1fr;display:grid;gap:8px}
+.mrow .del{position:absolute;top:10px;right:0;background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tx{grid-column:1 / -1}
+#save{display:block;margin:18px auto 0;background:var(--accent);color:#14161f;border:0;border-radius:10px;padding:12px 34px;font-size:15px;font-weight:600;cursor:pointer}
+#out{text-align:center;color:var(--muted);margin-top:10px;font-size:13px;min-height:18px}
+button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:8px;padding:8px 18px;cursor:pointer}
+.n{position:relative}
+</style>
+</head>
+<body>
+<main>
+<h1>Редактор фамы</h1>
+<p class="h">Страница для старших фамы. Все правки сразу отображаются на главной. Код заполните ваш детям ниже (родители = строки, из которых кто-то происходит). <b style="color:var(--gold)">Внимание:</b> на бесплатном Render правки живут в памяти и слетают при следующем деплое/засыпании — после крупных правок пришлите файл мне в коммит.</p>
+<label>Название фамы</label>
+<input id="title" placeholder="Фама Ловатьер">
+<div class="grid2">
+  <div><label>Короткая подпись</label><input id="tagline" placeholder="Cosa Nostra. Семья превыше всего"></div>
+  <div><label>Пароль редактора</label><input id="pass" type="password" placeholder="FAMA_PASSWORD из настроек Render"></div>
+</div>
+<label>Описание фамы</label>
+<textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
+<div class="panel">
+  <label>Участники</label>
+  <div id="members"></div>
+  <button class="ghost" id="add" type="button">+ Добавить участника</button>
+</div>
+<button id="save" type="button">Сохранить</button>
+<div id="out"></div>
+<p class="h" style="margin-top:22px"><a style="color:var(--accent)" href="/">← На главную страницу фамы</a></p>
+</main>
+<script>__JS__</script>
+</body>
+</html>
+"""
+
+async def handle_fama_edit(request):
+    page = (FAMA_EDIT_PAGE
+            .replace('__JS__', FAMA_EDIT_SCRIPT)
+            .replace('__FAMA_DATA__', fam_json_safe(fam_state)))
+    return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
+        "Content-Security-Policy": FAMA_PAGE_CSP,
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-cache",
+    })
+
 ROOT_SCRIPT = """(function(){
 var b=document.getElementById('copy'),a=document.getElementById('addr');
 b.hidden=false;
@@ -1699,7 +2087,7 @@ ROOT_HEADERS = {
     "Cache-Control": "no-cache",
 }
 
-async def handle_root(request):
+async def handle_info(request):
     host = request.host if ROOT_HOST_RE.match(request.host or '') else 'your-server-address'
     return web.Response(text=ROOT_PAGE.replace('{{HOST}}', host), content_type='text/html', charset='utf-8', headers=ROOT_HEADERS)
 
@@ -1709,6 +2097,10 @@ app.on_startup.append(start_background_tasks)
 app.on_cleanup.append(cleanup_background_tasks)
 
 app.router.add_get('/', handle_root)
+app.router.add_get('/info', handle_info)
+app.router.add_get('/fama.json', handle_fama_data)
+app.router.add_post('/fama/save', handle_fama_save)
+app.router.add_get('/fama/edit', handle_fama_edit)
 app.router.add_get('/api/', handle_api_check)
 app.router.add_get('/api', handle_api_check)
 app.router.add_get('/api/version', handle_version)
