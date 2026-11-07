@@ -969,6 +969,8 @@ def load_fam_state():
         "relations": [],
     }
 
+load_fam_state()
+
 @web.middleware
 async def security_middleware(request, handler):
     real_ip = get_real_ip(request)
@@ -1757,63 +1759,79 @@ async def cleanup_background_tasks(app):
 FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
-    # '<' -> \u003c, чтобы не закрыть <script> случайно
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
 FAMA_PAGE_STYLES = """
-:root{--bg:#0f111a;--bg2:#191d29;--fg:#e8e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#222a3f,var(--bg)) fixed;color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif;padding:24px 14px 40px}
-main{max-width:1040px;margin:0 auto}
-header.t{text-align:center;margin:8px 0 24px}
-h1{margin:0;font-size:42px;letter-spacing:.04em;color:var(--gold);font-weight:600}
-.tagline{color:var(--muted);margin:6px 0 0;font-style:italic}
-.desc{white-space:pre-line;color:var(--fg);margin:14px auto 0;max-width:760px;line-height:1.6}
-hr.r{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:22px 0}
-h2{text-align:center;color:var(--gold);font-weight:500;letter-spacing:.08em;font-size:20px;margin:26px 0 14px}
-.board{position:relative;width:100%;max-width:1000px;margin:0 auto;aspect-ratio:16/10;min-height:340px;border-radius:14px;background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,0) 26%,rgba(0,0,0,.1) 60%,rgba(0,0,0,.44)),repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 118px,rgba(0,0,0,.25) 118px 122px),repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,rgba(0,0,0,0) 2px 6px),linear-gradient(180deg,#9a6931,#7c4f23 58%,#64401a);box-shadow:0 0 0 10px #4d3324,0 0 0 12px #241609,inset 0 0 50px rgba(0,0,0,.52),0 16px 34px rgba(0,0,0,.55)}
+:root{--bg:#0b0d13;--panel:rgba(17,19,27,.86);--fg:#e9e6df;--muted:#8f929e;--gold:#d6b35c;--line:#2b2f3d;--accent:#c98a3f}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%,#1a1626 0%,transparent 60%),radial-gradient(900px 600px at 18% 82%,#0e1720 0%,transparent 55%),var(--bg);color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif}
+#board{position:fixed;inset:0;overflow:hidden;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 64px),repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 1px,transparent 1px 64px),repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 320px),repeating-linear-gradient(90deg,rgba(0,0,0,.25) 0 1px,transparent 1px 320px);box-shadow:inset 0 0 180px rgba(0,0,0,.75),inset 0 0 60px rgba(0,0,0,.45)}
 #threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
-.pin-card{position:absolute;width:134px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -16px;background:linear-gradient(180deg,#f6ecd2,#e4d2a8);color:#33240f;border-radius:5px;padding:10px 11px 12px;box-shadow:0 8px 14px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.09)}
-.pin-card::before{content:'';position:absolute;top:-8px;left:50%;margin-left:-8px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#ffa090,#c0392b 55%,#7d1f14);box-shadow:0 4px 5px rgba(0,0,0,.5)}
-.pin-card b{display:block;font-size:15px;color:#5c2f14;word-break:break-word}
-.pin-card .role{display:block;color:#7a5b31;font-size:10.5px;margin:2px 0 5px;text-transform:uppercase;letter-spacing:.05em}
-.pin-card .note{margin:0;white-space:pre-line;font-size:11.5px;line-height:1.45;color:#33240f;max-height:7.4em;overflow:hidden}
-.thread{fill:none;opacity:.92;stroke-linecap:round}
-.legend{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;margin-top:16px;color:var(--muted);font-size:13px;font-family:system-ui,sans-serif}
-.legend .sw{display:inline-block;width:30px;height:4px;border-radius:3px;margin-right:7px;vertical-align:middle}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.card{background:#1e2432;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.card b{display:block;font-size:17px;color:var(--gold)}
-.card .role{display:block;color:var(--muted);font-size:13px;margin:2px 0 8px;text-transform:uppercase;letter-spacing:.06em}
-.card .note{margin:0;white-space:pre-line;font-size:14px;line-height:1.55;color:var(--fg)}
-footer{text-align:center;color:var(--muted);font-size:12px;margin-top:34px;line-height:1.8;font-family:system-ui,sans-serif}
-footer a{color:var(--accent);text-decoration:none}footer a:hover{text-decoration:underline}
-footer code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
-@media(max-width:640px){h1{font-size:32px}.pin-card{width:112px}.board{min-height:300px}}
+.thread-glow{fill:none;opacity:.22;stroke-linecap:round}
+.thread-main{fill:none;opacity:.95;stroke-linecap:round}
+.knot{opacity:.95}
+.photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -20px;background:linear-gradient(180deg,#eee4cd,#d8c9a3 70%,#cbb98f);color:#2c210e;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28)}
+.photo::before{content:'';position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:64px;height:20px;background:rgba(214,179,92,.4);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 5px rgba(0,0,0,.35)}
+.photo b{display:block;font-size:13px;letter-spacing:.03em;color:#3a2a12;text-transform:uppercase;word-break:break-word}
+.photo .role{display:block;color:#7a5f33;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em}
+.photo .note{margin:0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#2c210e;max-height:7.6em;overflow:hidden}
+.hud{position:fixed;z-index:5;font-family:system-ui,sans-serif}
+.hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px}
+.hud button.on{background:var(--gold);color:#12131a;border-color:var(--gold)}
+.title{top:12px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;max-width:70vw}
+.title h1{margin:0;font-size:30px;letter-spacing:.14em;color:var(--gold);text-shadow:0 2px 16px rgba(0,0,0,.85)}
+.title .tagline{font-style:italic;color:var(--muted);font-size:13px;margin-top:3px;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.btns{top:14px;right:14px;display:flex;gap:8px}
+.panel-box{top:60px;right:14px;width:min(380px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.panel-box .desc{white-space:pre-line;line-height:1.62;font-size:14px;color:var(--fg)}
+.panel-box .meta{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7}
+.panel-box .meta a{color:var(--accent)}
+.panel-box .meta code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
+.members{top:60px;right:14px;width:min(340px,92vw);max-height:62vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.mrow{padding:9px 0;border-bottom:1px dashed var(--line)}
+.mrow:last-child{border-bottom:0}
+.mrow b{color:var(--gold);font-size:14.5px}
+.mrow .role{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-left:6px}
+.mrow .note{font-size:12.5px;margin:3px 0 0;white-space:pre-line;color:var(--fg)}
+.legend{bottom:14px;left:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;max-width:52vw;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted)}
+.legend .sw{display:inline-block;width:26px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.hint{bottom:14px;right:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:11.5px;color:var(--muted);text-align:right;line-height:1.7}
+.hint a{color:var(--accent);text-decoration:none}
+.hint a:hover{text-decoration:underline}
+.hint code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg)}
+@media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}}
 """
 
 FAMA_PAGE_JS = """
 var fam = __FAMA_DATA__;
+
+function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
 document.getElementById('fam_title').textContent = fam.title || 'Фама';
-document.getElementById('tagline').textContent = fam.tagline || '';
-document.getElementById('desc').textContent = fam.description || '';
-if(!fam.tagline) document.getElementById('tagline').hidden = true;
-if(!fam.description) document.getElementById('desc').hidden = true;
-document.getElementById('updated').textContent = fam.updated || '—';
+var tagEl = document.getElementById('tagline');
+tagEl.textContent = fam.tagline || '';
+if(!fam.tagline) tagEl.hidden = true;
+
+var infoDesc = el('p', 'desc'); infoDesc.textContent = fam.description || '';
+document.getElementById('infoText').appendChild(infoDesc);
+document.getElementById('infoMeta').innerHTML = '';
+document.getElementById('infoMeta').textContent = '';
+document.getElementById('infoMeta').appendChild(document.createTextNode('обновлено: ' + (fam.updated || '—')));
 
 var typeInfo = {};
 (fam.threads || []).forEach(function(t){ typeInfo[t.id] = t; });
 
-function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
-
 var board = document.getElementById('board');
 var cardEls = {};
 (fam.members || []).forEach(function(m, i){
-  var d = el('div', 'pin-card');
+  var d = el('div', 'photo');
   d.style.left = (typeof m.x === 'number' ? m.x : 50) + '%';
   d.style.top = (typeof m.y === 'number' ? m.y : 50) + '%';
-  d.style.setProperty('--tilt', (((i % 5) - 2) * 0.7) + 'deg');
+  d.style.setProperty('--tilt', (((i % 5) - 2) * 0.9) + 'deg');
+  d.style.setProperty('--tape', (((i % 3) - 1) * 1.6) + 'deg');
   d.appendChild(el('b', null, m.name));
   if(m.role){ d.appendChild(el('span', 'role', m.role)); }
   if(m.note){ d.appendChild(el('p', 'note', m.note)); }
@@ -1822,27 +1840,46 @@ var cardEls = {};
 });
 
 var svg = document.getElementById('threads');
+var SVGNS = 'http://www.w3.org/2000/svg';
 function drawThreads(){
-  var W = board.clientWidth, H = board.clientHeight;
+  var W = window.innerWidth, H = window.innerHeight;
   if(!W || !H) return;
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   while(svg.firstChild) svg.removeChild(svg.firstChild);
   (fam.relations || []).forEach(function(rel){
     var a = cardEls[rel.from], b = cardEls[rel.to], t = typeInfo[rel.type];
     if(!a || !b) return;
-    var ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + 7;
-    var bx = b.offsetLeft + b.offsetWidth / 2, by = b.offsetTop + 7;
+    var color = (t && t.color) || '#c9973f';
+    var ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop - 2;
+    var bx = b.offsetLeft + b.offsetWidth / 2, by = b.offsetTop - 2;
     var dx = bx - ax, dy = by - ay;
-    var sag = Math.min(52, Math.sqrt(dx*dx + dy*dy) * 0.13);
+    var sag = Math.min(60, Math.sqrt(dx*dx + dy*dy) * 0.12);
     var mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
-    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', 'M ' + ax.toFixed(1) + ' ' + ay.toFixed(1) + ' Q ' + mx.toFixed(1) + ' ' + my.toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1));
-    p.setAttribute('class', 'thread');
-    p.setAttribute('stroke', (t && t.color) || '#c9973f');
-    p.setAttribute('stroke-width', 2.4);
-    svg.appendChild(p);
+    var dPath = 'M ' + ax.toFixed(1) + ' ' + ay.toFixed(1) + ' Q ' + mx.toFixed(1) + ' ' + my.toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1);
+    var glow = document.createElementNS(SVGNS, 'path');
+    glow.setAttribute('d', dPath);
+    glow.setAttribute('class', 'thread-glow');
+    glow.setAttribute('stroke', color);
+    glow.setAttribute('stroke-width', 7);
+    svg.appendChild(glow);
+    var main = document.createElementNS(SVGNS, 'path');
+    main.setAttribute('d', dPath);
+    main.setAttribute('class', 'thread-main');
+    main.setAttribute('stroke', color);
+    main.setAttribute('stroke-width', 2.2);
+    svg.appendChild(main);
+    [ [ax, ay], [bx, by] ].forEach(function(pt){
+      var knot = document.createElementNS(SVGNS, 'circle');
+      knot.setAttribute('cx', pt[0].toFixed(1));
+      knot.setAttribute('cy', pt[1].toFixed(1));
+      knot.setAttribute('r', 3);
+      knot.setAttribute('class', 'knot');
+      knot.setAttribute('fill', color);
+      svg.appendChild(knot);
+    });
   });
 }
+drawThreads();
 requestAnimationFrame(drawThreads);
 window.addEventListener('resize', drawThreads);
 
@@ -1855,14 +1892,29 @@ var legend = document.getElementById('legend');
   legend.appendChild(item);
 });
 
-var cards = document.getElementById('cards');
+var membersPanel = document.getElementById('membersPanel');
 (fam.members || []).forEach(function(m){
-  var d = el('div', 'card');
-  d.appendChild(el('b', null, m.name));
-  if(m.role){ d.appendChild(el('span', 'role', m.role)); }
-  if(m.note){ d.appendChild(el('p', 'note', m.note)); }
-  cards.appendChild(d);
+  var row = el('div', 'mrow');
+  var head = el('span');
+  head.appendChild(el('b', null, m.name));
+  if(m.role){ var r = el('span', 'role', m.role); head.appendChild(r); }
+  row.appendChild(head);
+  if(m.note){ row.appendChild(el('p', 'note', m.note)); }
+  membersPanel.appendChild(row);
 });
+
+var btnInfo = document.getElementById('btnInfo');
+var btnMembers = document.getElementById('btnMembers');
+var infoPanel = document.getElementById('infoPanel');
+function toggle(which){
+  var show = which === 'info';
+  infoPanel.hidden = (show ? !infoPanel.hidden : true);
+  membersPanel.hidden = (show ? true : !membersPanel.hidden);
+  btnInfo.classList.toggle('on', !infoPanel.hidden);
+  btnMembers.classList.toggle('on', !membersPanel.hidden);
+}
+btnInfo.addEventListener('click', function(){ toggle('info'); });
+btnMembers.addEventListener('click', function(){ toggle('members'); });
 """
 
 FAMA_PAGE_TEMPLATE = """<!doctype html>
@@ -1875,25 +1927,33 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <style>__STYLES__</style>
 </head>
 <body>
-<main>
-<header class="t">
+<div id="board"><svg id="threads"></svg></div>
+
+<div class="hud title">
 <h1 id="fam_title"></h1>
 <p class="tagline" id="tagline"></p>
-<p class="desc" id="desc"></p>
-</header>
-<hr class="r">
-<h2>Доска</h2>
-<div class="board" id="board"><svg id="threads"></svg></div>
-<div class="legend" id="legend"></div>
-<hr class="r">
-<h2>Участники</h2>
-<div class="cards" id="cards"></div>
-<footer>
-обновлено: <span id="updated"></span><br>
-Это не веб-сайт: впишите адрес <code>__HOST__</code> в настройках Figura, чтобы работать в игре.<br>
-<a href="/fama/edit">редактировать</a> · <a href="/info">что это за адрес?</a>
-</footer>
-</main>
+</div>
+
+<div class="hud btns">
+<button id="btnMembers" type="button">Участники</button>
+<button id="btnInfo" type="button">О фаме</button>
+</div>
+
+<div class="hud panel-box" id="infoPanel" hidden>
+<div id="infoText"></div>
+<div class="meta" id="infoMeta"></div>
+<div class="meta">Наш адрес для Figura: <code>__HOST__</code><br><a href="/fama/edit">редактировать доску</a> · <a href="/info">что это за адрес?</a></div>
+</div>
+
+<div class="hud members" id="membersPanel" hidden></div>
+
+<div class="hud legend" id="legend"></div>
+
+<div class="hud hint">
+Figura Cloud IP: <code>__HOST__</code><br>
+<a href="/fama/edit">редактировать</a>
+</div>
+
 <script>__JS__</script>
 </body>
 </html>
@@ -2022,7 +2082,7 @@ function typeRow(t){
   var label = el('input'); label.placeholder = 'Название связи (братья, женаты...)'; label.value = t.label;
   label.addEventListener('input', function(){ t.label = label.value; });
   row.appendChild(label);
-  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать тип нути';
+  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать тип нити';
   del.addEventListener('click', function(){
     var used = rels.some(function(r){ return r.type === t.id; });
     if(used){ alert('Есть связи этого типа на доске — сначала уберите их.'); return; }
@@ -2095,7 +2155,7 @@ document.getElementById('save').addEventListener('click', function(){
   fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, data: data }) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Главная доска уже показывает новые данные.'; }
+      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Доска уже показывает новые данные.'; }
       else if(r.status === 403){ out.textContent = 'Неверный пароль.'; }
       else { out.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status); }
     })
@@ -2150,10 +2210,10 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
   <div><label class="label">Пароль редактора</label><input id="pass" type="password" placeholder="FAMA_PASSWORD из настроек Render"></div>
 </div>
 <label class="label">Описание фамы</label>
-<textarea id="description" rows="4" placeholder="История, принцип, вехи..."></textarea>
+<textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
 <div class="panel">
   <h3>Участники</h3>
-  <p class="sub">X и Y — позиция карточки на доске в процентах (X от 2 до 96, Y от 4 до 88). Поиграйте цифрами, пока карточки не лягут красиво.</p>
+  <p class="sub">X и Y — позиция карточки на доске в процентах (X от 2 до 96, Y от 4 до 88).</p>
   <div id="members"></div>
   <button class="ghost" id="addMember" type="button">+ Добавить участника</button>
 </div>
