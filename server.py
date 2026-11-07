@@ -1760,6 +1760,10 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+def fam_json_safe(data):
+    return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
+
 # -------- настройки сайта (панель) --------
 FAMA_SETTINGS_PATH = os.path.join("data", "settings.json")
 PING_URL_PATH = "PING_URL.txt"
@@ -1797,8 +1801,6 @@ def fama_effective_password():
 
 load_settings_state()
 
-def fam_json_safe(data):
-    return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
 FAMA_PAGE_STYLES = """
 :root{--bg:#0b0d13;--panel:rgba(17,19,27,.86);--fg:#e9e6df;--muted:#8f929e;--gold:#d6b35c;--line:#2b2f3d;--accent:#c98a3f}
@@ -1810,6 +1812,22 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .thread-glow{fill:none;opacity:.22;stroke-linecap:round}
 .thread-main{fill:none;opacity:.95;stroke-linecap:round}
 .knot{opacity:.95}
+#threads path.cold,#threads circle.cold{opacity:.1 !important}
+#threads path.thread-main.hot{opacity:1}
+#threads path.thread-glow.hot{opacity:.5}
+#threads circle.hot{opacity:1}
+.profile{top:60px;right:14px;width:min(360px,92vw);max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px 16px;box-shadow:0 16px 40px rgba(0,0,0,.6);font-family:system-ui,sans-serif}
+.profile .ph{display:flex;gap:12px;align-items:center;position:relative}
+.profile .ph img{width:52px;height:52px;image-rendering:pixelated;border-radius:4px;background:#c9b88f;flex:0 0 auto}
+.profile .ava-tile{width:52px;height:52px;line-height:52px;font-size:24px;flex:0 0 auto}
+.profile h3{margin:0;color:var(--gold);font-size:19px;word-break:break-word}
+.profile .role{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.profile .note{white-space:pre-line;font-size:13.5px;line-height:1.6;color:var(--fg);margin:10px 0}
+.profile .rel{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-top:1px dashed var(--line);color:var(--fg)}
+.profile .rel .sw{width:22px;height:3px;border-radius:2px;flex:0 0 auto}
+.profile .close{position:absolute;top:0;right:0;background:none;border:1px solid var(--line);border-radius:8px;color:var(--muted);width:28px;height:28px;cursor:pointer;font-size:14px}
+.profile .close:hover{color:var(--fg)}
+.profile .none{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:linear-gradient(180deg,#eee4cd,#d8c9a3 70%,#cbb98f);color:#2c210e;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .photo.dragging{cursor:grabbing;z-index:3;box-shadow:0 22px 40px rgba(0,0,0,.8),inset 0 0 0 1px rgba(255,255,255,.28)}
 .photo::before{content:'';position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:64px;height:20px;background:rgba(214,179,92,.4);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 5px rgba(0,0,0,.35)}
@@ -1929,12 +1947,16 @@ function drawThreads(){
     glow.setAttribute('class', 'thread-glow');
     glow.setAttribute('stroke', color);
     glow.setAttribute('stroke-width', 7);
+    glow.setAttribute('data-a', rel.from);
+    glow.setAttribute('data-b', rel.to);
     svg.appendChild(glow);
     var main = document.createElementNS(SVGNS, 'path');
     main.setAttribute('d', dPath);
     main.setAttribute('class', 'thread-main');
     main.setAttribute('stroke', color);
     main.setAttribute('stroke-width', 2.2);
+    main.setAttribute('data-a', rel.from);
+    main.setAttribute('data-b', rel.to);
     svg.appendChild(main);
     [ [ax, ay], [bx, by] ].forEach(function(pt){
       var knot = document.createElementNS(SVGNS, 'circle');
@@ -1943,6 +1965,8 @@ function drawThreads(){
       knot.setAttribute('r', 3);
       knot.setAttribute('class', 'knot');
       knot.setAttribute('fill', color);
+      knot.setAttribute('data-a', rel.from);
+      knot.setAttribute('data-b', rel.to);
       svg.appendChild(knot);
     });
   });
@@ -1968,12 +1992,13 @@ board.addEventListener('pointerdown', function(e){
   e.preventDefault();
   var br = board.getBoundingClientRect();
   var r = card.getBoundingClientRect();
-  drag = { card: card, br: br, offX: (e.clientX - br.left) - (r.left - br.left), offY: (e.clientY - br.top) - (r.top - br.top) };
+  drag = { card: card, br: br, offX: (e.clientX - br.left) - (r.left - br.left), offY: (e.clientY - br.top) - (r.top - br.top), moved: false, sx: e.clientX, sy: e.clientY };
   card.classList.add('dragging');
   try { card.setPointerCapture(e.pointerId); } catch(err) {}
 });
 window.addEventListener('pointermove', function(e){
   if(!drag) return;
+  if(e.clientX !== drag.sx || e.clientY !== drag.sy){ drag.moved = true; }
   var br = drag.br;
   var x = clamp((e.clientX - br.left - drag.offX) / br.width * 100, 2, 96);
   var y = clamp((e.clientY - br.top - drag.offY) / br.height * 100, 4, 88);
@@ -1989,9 +2014,67 @@ window.addEventListener('pointerup', function(e){
     m.x = Math.round(parseFloat(drag.card.style.left) * 2) / 2;
     m.y = Math.round(parseFloat(drag.card.style.top) * 2) / 2;
   }
+  var wasClick = !drag.moved;
+  var name = drag.card.dataset.name;
   drag = null;
-  markDirty();
+  if(wasClick){ openProfile(name); }
+  else { markDirty(); }
 });
+
+/* ---------- hover highlight ---------- */
+function setHover(name){
+  var elems = svg.querySelectorAll('path[data-a], circle[data-a]');
+  Array.prototype.forEach.call(elems, function(p){
+    var hot = !name || p.getAttribute('data-a') === name || p.getAttribute('data-b') === name;
+    p.classList.toggle('hot', hot && !!name);
+    p.classList.toggle('cold', !!name && !hot);
+  });
+}
+board.addEventListener('pointerover', function(e){
+  var c = e.target.closest ? e.target.closest('.photo') : null;
+  if(c && c.dataset.name) setHover(c.dataset.name);
+});
+board.addEventListener('pointerout', function(e){
+  var c = e.target.closest ? e.target.closest('.photo') : null;
+  if(!c) return;
+  var to = e.relatedTarget;
+  if(to && to.closest && to.closest('.photo') === c) return;
+  setHover(null);
+});
+
+/* ---------- member profile ---------- */
+var profilePanel = document.getElementById('profilePanel');
+function openProfile(name){
+  var m = byName[name];
+  if(!m) return;
+  profilePanel.innerHTML = '';
+  var head = el('div', 'ph');
+  head.appendChild(makeAvatar(name));
+  var ht = el('div');
+  ht.appendChild(el('h3', null, name));
+  if(m.role) ht.appendChild(el('span', 'role', m.role));
+  head.appendChild(ht);
+  var close = el('button', 'close', '×'); close.type = 'button';
+  close.addEventListener('click', function(){ profilePanel.hidden = true; });
+  head.appendChild(close);
+  profilePanel.appendChild(head);
+  if(m.note){ profilePanel.appendChild(el('p', 'note', m.note)); }
+  var relsOf = (fam.relations || []).filter(function(r){ return r.from === name || r.to === name; });
+  if(relsOf.length){
+    relsOf.forEach(function(r){
+      var other = r.from === name ? r.to : r.from;
+      var t = typeInfo[r.type];
+      var row = el('div', 'rel');
+      var sw = el('span', 'sw'); sw.style.background = (t && t.color) || '#c9973f';
+      row.appendChild(sw);
+      row.appendChild(document.createTextNode(((t && t.label) || r.type) + ': ' + other));
+      profilePanel.appendChild(row);
+    });
+  } else {
+    profilePanel.appendChild(el('p', 'none', 'Связей пока нет.'));
+  }
+  profilePanel.hidden = false;
+}
 
 btnSavePos.addEventListener('click', function(){
   var pass = null;
@@ -2063,6 +2146,15 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>__TITLE__ · Доска фамы</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d13'/%3E%3Cpath d='M8 8 Q16 17 24 24' stroke='%23c9973f' stroke-width='2' fill='none'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23d6b35c'/%3E%3Ccircle cx='24' cy='24' r='4' fill='%23d6b35c'/%3E%3C/svg%3E">
+<meta property="og:title" content="__TITLE__ · Доска фамы">
+<meta property="og:description" content="__OGDESC__">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://__HOST__/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="__TITLE__ · Доска фамы">
+<meta name="twitter:description" content="__OGDESC__">
+<meta name="twitter:image" content="https://__HOST__/og.png">
 <style>__STYLES__</style>
 </head>
 <body>
@@ -2087,11 +2179,13 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="hud members" id="membersPanel" hidden></div>
 
+<div class="hud profile" id="profilePanel" hidden></div>
+
 <div class="hud legend" id="legend"></div>
 
 <div class="hud hint">
 Figura Cloud IP: <code>__HOST__</code><br>
-карточки можно перетаскивать мышью · <a href="/fama/edit">редактировать</a>
+карточки можно перетаскивать и нажимать · <a href="/fama/edit">редактировать</a> · <a href="/status">статус</a>
 </div>
 
 <script>__JS__</script>
@@ -2106,8 +2200,11 @@ FAMA_HOST_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
 async def handle_root(request):
     host_source = settings_state.get("host_display") or request.host
     host = host_source if FAMA_HOST_RE.match(host_source or '') else 'your-server-address'
+    og_desc = fam_state.get('tagline') or fam_state.get('description') or 'Доска нашей семьи'
+    og_desc = ' '.join(og_desc.split())[:200]
     page = (FAMA_PAGE_TEMPLATE
             .replace('__TITLE__', html.escape(fam_state.get('title') or 'Фама'))
+            .replace('__OGDESC__', html.escape(og_desc))
             .replace('__STYLES__', FAMA_PAGE_STYLES)
             .replace('__JS__', FAMA_PAGE_JS)
             .replace('__FAMA_DATA__', fam_json_safe(fam_state))
@@ -2839,6 +2936,181 @@ async def handle_panel_ping(request):
     log_info(f"[PANEL] ping url updated to {url} repo={repo} ip={ip}")
     return web.json_response({"status": "success", "ping_url": url})
 
+# ======================== OG-картинка и статус ========================
+SERVER_STARTED_AT = time.time()
+
+def og_png_bytes(width, height, rows):
+    """rows: list of RGB bytes, one per row."""
+    import struct as _struct
+    import zlib as _zlib
+    def chunk(tag, data):
+        c = _struct.pack(">I", len(data)) + tag + data
+        c += _struct.pack(">I", _zlib.crc32(tag + data) & 0xffffffff)
+        return c
+    raw = b"".join(b"\x00" + row for row in rows)
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", _struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", _zlib.compress(raw, 6))
+            + chunk(b"IEND", b""))
+
+async def handle_og(request):
+    W, H = 1200, 630
+    # --- фон: тёмный градиент + виньетка ---
+    xs = [min(1.0, (min(x, W - 1 - x) / 140.0)) * 0.55 + 0.45 for x in range(W)]
+    rows = []
+    base_rows = []
+    for y in range(H):
+        fy = y / H
+        r0 = int(11 + 14 * fy)
+        g0 = int(13 + 10 * (1 - fy))
+        b0 = int(19 + 18 * fy)
+        row = bytearray(W * 3)
+        for x in range(W):
+            k = xs[x]
+            i = x * 3
+            row[i] = int(r0 * k)
+            row[i + 1] = int(g0 * k)
+            row[i + 2] = int(b0 * k)
+        base_rows.append(row)
+
+    def blend(row, x, y, color, alpha):
+        if 0 <= x < W and 0 <= y < H:
+            i = x * 3
+            row[i] = min(255, int(row[i] * (1 - alpha) + color[0] * alpha))
+            row[i + 1] = min(255, int(row[i + 1] * (1 - alpha) + color[1] * alpha))
+            row[i + 2] = min(255, int(row[i + 2] * (1 - alpha) + color[2] * alpha))
+
+    def disc(row, cx, cy, radius, color, alpha):
+        r2 = radius * radius
+        for yy in range(max(0, int(cy - radius)), min(H, int(cy + radius) + 1)):
+            for xx in range(max(0, int(cx - radius)), min(W, int(cx + radius) + 1)):
+                dx, dy = xx - cx, yy - cy
+                if dx * dx + dy * dy <= r2:
+                    blend(base_rows[yy], xx, yy, color, alpha)
+
+    def rect(x0, y0, w, h, color, alpha=1.0):
+        for yy in range(max(0, int(y0)), min(H, int(y0 + h))):
+            for xx in range(max(0, int(x0)), min(W, int(x0 + w))):
+                blend(base_rows[yy], xx, yy, color, alpha)
+
+    # --- сетка карты ---
+    for gx in range(0, W, 80):
+        for y in range(H):
+            blend(base_rows[y], gx, y, (255, 255, 255), 0.02)
+    for gy in range(0, H, 80):
+        row = base_rows[gy]
+        for x in range(W):
+            blend(row, x, gy, (255, 255, 255), 0.02)
+
+    # --- карточки участников ---
+    members = fam_state.get("members") or []
+    card_pos = []
+    for m in members[:8]:
+        mx = (float(m.get("x", 50)) / 100.0) * (W - 170) + 10
+        my = (float(m.get("y", 50)) / 100.0) * (H - 130) + 10
+        rect(mx, my, 150, 110, (40, 30, 12), 0.55)      # тень
+        rect(mx, my - 4, 150, 110, (14, 11, 6), 0.9)    # рамка
+        rect(mx + 3, my - 1, 144, 104, (232, 220, 190), 1.0)  # бумага
+        rect(mx + 12, my + 12, 60, 6, (122, 95, 51), 1.0)     # роль-полоска
+        rect(mx + 12, my + 26, 100, 5, (90, 70, 40), 0.8)
+        card_pos.append((mx + 75, my - 4))
+
+    # --- нити между карточками ---
+    type_colors = {t.get("id"): t.get("color", "#c9973f") for t in (fam_state.get("threads") or [])}
+    idx = {m.get("name"): i for i, m in enumerate(members[:8])}
+    for rel in (fam_state.get("relations") or []):
+        a, b = idx.get(rel.get("from")), idx.get(rel.get("to"))
+        if a is None or b is None:
+            continue
+        hx = type_colors.get(rel.get("type"), "#c9973f")
+        try:
+            color = tuple(int(hx.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
+        except Exception:
+            color = (201, 151, 63)
+        ax, ay = card_pos[a]
+        bx, by = card_pos[b]
+        cx, cy = (ax + bx) / 2, (ay + by) / 2 + 60
+        for step in range(121):
+            t = step / 120.0
+            px = (1 - t) ** 2 * ax + 2 * (1 - t) * t * cx + t ** 2 * bx
+            py = (1 - t) ** 2 * ay + 2 * (1 - t) * t * cy + t ** 2 * by
+            disc(base_rows, px, py, 7, color, 0.10)
+            disc(base_rows, px, py, 2, color, 0.95)
+
+    return web.Response(body=og_png_bytes(W, H, base_rows), content_type="image/png", headers={
+        "Cache-Control": "public, max-age=600",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+STATUS_PAGE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Статус · Фама</title>
+<style>
+:root{--bg:#12141c;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--ok:#4caf6d;--err:#e07070}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+main{max-width:680px;margin:0 auto}
+h1{color:var(--gold);font-size:26px;margin:0 0 16px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:10px 0;display:flex;gap:12px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
+.dot.ok{background:var(--ok);box-shadow:0 0 8px rgba(76,175,109,.6)}
+.dot.err{background:var(--err);box-shadow:0 0 8px rgba(224,112,112,.6)}
+.row b{display:block;font-size:14px}
+.row span{color:var(--muted);font-size:12.5px}
+a{color:#c9973f;text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+<h1>Статус сервера</h1>
+__ROWS__
+<p style="color:var(--muted);font-size:12.5px">← <a href="/">на доску</a> · <a href="/fama/edit">редактировать</a> · <a href="/panel">панель настроек</a></p>
+</main>
+</body>
+</html>
+"""
+
+def status_row(ok, title, sub):
+    cls = "ok" if ok else "err"
+    return (f'<div class="row"><span class="dot {cls}"></span>'
+            f'<div><b>{html.escape(title)}</b><span>{html.escape(sub)}</span></div></div>')
+
+async def handle_status(request):
+    rows = []
+    rows.append(status_row(True, "Сервер работает", f"аптайм: {int((time.time() - SERVER_STARTED_AT) / 60)} мин · время сервера: {time.strftime('%Y-%m-%d %H:%M')}"))
+    try:
+        async with ClientSession() as session:
+            async with session.get(f"http://127.0.0.1:{os.environ.get('PORT', '10000')}/api/version", timeout=ClientTimeout(total=5)) as resp:
+                rows.append(status_row(resp.status == 200, "API /api/version", f"HTTP {resp.status}"))
+    except Exception as e:
+        rows.append(status_row(False, "API /api/version", f"недоступен: {e!r}"))
+    n_members = len(fam_state.get("members") or [])
+    n_rels = len(fam_state.get("relations") or [])
+    rows.append(status_row(True, "Доска фамы", f"участников: {n_members} · связей: {n_rels} · обновлено: {fam_state.get('updated') or '—'}"))
+    has_pass = bool(fama_effective_password())
+    rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "FAMA_PASSWORD не задан — редактор выключен"))
+    host_d = settings_state.get("host_display") or ""
+    rows.append(status_row(True, "Адрес на доске", host_d if host_d else "автоматический (из браузера)"))
+    ping = settings_state.get("ping_url") or ""
+    if not ping:
+        try:
+            with open(PING_URL_PATH, encoding="utf-8") as f:
+                ping = f.read().strip()
+        except OSError:
+            ping = ""
+    rows.append(status_row(bool(ping), "Анти-сон (пинг)", ping if ping else "PING_URL.txt не найден"))
+    page = STATUS_PAGE.replace("__ROWS__", "".join(rows))
+    return web.Response(text=page, content_type="text/html", charset="utf-8", headers={
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache",
+    })
+
 ROOT_SCRIPT = """(function(){
 var b=document.getElementById('copy'),a=document.getElementById('addr');
 b.hidden=false;
@@ -2934,6 +3206,8 @@ app.router.add_get('/panel', handle_panel)
 app.router.add_post('/panel/host', handle_panel_host)
 app.router.add_post('/panel/password', handle_panel_password)
 app.router.add_post('/panel/ping', handle_panel_ping)
+app.router.add_get('/status', handle_status)
+app.router.add_get('/og.png', handle_og)
 app.router.add_get('/api/', handle_api_check)
 app.router.add_get('/api', handle_api_check)
 app.router.add_get('/api/version', handle_version)
