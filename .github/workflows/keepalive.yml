@@ -2,6 +2,8 @@ name: Keep-alive ping
 
 # Пингует free-инстанс Render каждые 5 минут, чтобы он не засыпал
 # после 15 минут без трафика. Для публичного репозитория минуты Actions бесплатны.
+# Адрес берётся из файла PING_URL.txt в корне репозитория —
+# его удобно менять через панель настроек сервера (/panel).
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -15,7 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Render service
+        env:
+          GH_REPO: ${{ github.repository }}
         run: |
-          # || true — не роняем воркфлоу, еслиRender перезапускается или отвечает 503
-          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 https://figura-unchained-backend.onrender.com/api/version || true)
+          URL=$(curl -s -m 15 "https://raw.githubusercontent.com/${GH_REPO}/${{ github.ref_name }}/PING_URL.txt" | tr -d '[:space:]')
+          if [ -z "$URL" ]; then URL="https://figura-unchained-backend.onrender.com/api/version"; fi
+          echo "Pinging: $URL"
+          # || true — не роняем воркфлоу, если Render перезапускается или отвечает 503
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL" || true)
           echo "HTTP status: ${code:-000}"
