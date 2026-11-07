@@ -1760,8 +1760,43 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
+# -------- настройки сайта (панель) --------
+FAMA_SETTINGS_PATH = os.path.join("data", "settings.json")
+PING_URL_PATH = "PING_URL.txt"
+PANEL_DEFAULT_REPO = "MrXerobrinYt/figura-unchained-backend"
+PANEL_REPO_RE = re.compile(r'^[A-Za-z0-9._\-]+/[A-Za-z0-9._\-]+$')
+PANEL_TOKEN_RE = re.compile(r'^(ghp_|github_pat_)?[A-Za-z0-9_]{20,180}$')
+PANEL_URL_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
+
+settings_state = {}
+
+def load_settings_state():
+    global settings_state
+    try:
+        with open(FAMA_SETTINGS_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            settings_state = {
+                "host_display": fam_clean_text(data.get("host_display") or "", 253),
+                "fama_password": fam_clean_text(data.get("fama_password") or "", 128),
+                "ping_url": fam_clean_text(data.get("ping_url") or "", 253),
+                "ping_repo": fam_clean_text(data.get("ping_repo") or "", 120),
+            }
+            return
+    except (OSError, ValueError):
+        pass
+    settings_state = {"host_display": "", "fama_password": "", "ping_url": "", "ping_repo": ""}
+
+def save_settings_state():
+    os.makedirs(os.path.dirname(FAMA_SETTINGS_PATH), exist_ok=True)
+    payload = {k: settings_state.get(k) or "" for k in ("host_display", "fama_password", "ping_url", "ping_repo")}
+    save_secure_file(FAMA_SETTINGS_PATH, json.dumps(payload, ensure_ascii=False, indent=2))
+
+def fama_effective_password():
+    return settings_state.get("fama_password") or FAMA_PASSWORD
+
+load_settings_state()
+
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -2069,7 +2104,8 @@ FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsa
 FAMA_HOST_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
 
 async def handle_root(request):
-    host = request.host if FAMA_HOST_RE.match(request.host or '') else 'your-server-address'
+    host_source = settings_state.get("host_display") or request.host
+    host = host_source if FAMA_HOST_RE.match(host_source or '') else 'your-server-address'
     page = (FAMA_PAGE_TEMPLATE
             .replace('__TITLE__', html.escape(fam_state.get('title') or 'Фама'))
             .replace('__STYLES__', FAMA_PAGE_STYLES)
@@ -2087,8 +2123,8 @@ async def handle_fama_data(request):
     return web.json_response(fam_state)
 
 async def handle_fama_save(request):
-    if not FAMA_PASSWORD:
-        return web.json_response({"error": "Editor disabled: set FAMA_PASSWORD in .env"}, status=503)
+    if not FAMA_PASSWORD and not settings_state.get("fama_password"):
+        return web.json_response({"error": "Editor disabled: set FAMA_PASSWORD in .env or use panel"}, status=503)
     ip = request['real_ip']
     try:
         body = await request.json()
@@ -2097,7 +2133,7 @@ async def handle_fama_save(request):
     if not isinstance(body, dict):
         return web.json_response({"error": "Invalid data"}, status=400)
     password = body.get("password")
-    if not isinstance(password, str) or not secrets.compare_digest(password, FAMA_PASSWORD):
+    if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
         log_info(f"[FAMA] save REJECT ip={ip} reason=wrong-password")
         return web.json_response({"error": "Wrong password"}, status=403)
     try:
@@ -2121,6 +2157,8 @@ try { P.value = localStorage.getItem('famaPass') || ''; } catch(e) {}
 var M = document.getElementById('members');
 var R = document.getElementById('rels');
 var T = document.getElementById('types');
+var pvBoard = document.getElementById('pvBoard');
+var pvSvg = document.getElementById('pvThreads');
 
 var members = (fam.members || []).map(function(m){ return { name: m.name || '', role: m.role || '', note: m.note || '', x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
 var types = (fam.threads || []).map(function(t){ return { id: t.id, label: t.label || '', color: t.color || '#c9973f' }; });
@@ -2136,11 +2174,145 @@ function uniqueId(base){
   return id;
 }
 function memberNames(){ return members.filter(function(m){ return m.name; }).map(function(m){ return m.name; }); }
+function typeById(id){ for(var i = 0; i < types.length; i++){ if(types[i].id === id) return types[i]; } return null; }
 
-function bind(input, obj, key, num){
-  input.addEventListener('input', function(){ obj[key] = num ? Number(input.value) : input.value; });
+/* ---------- draft ---------- */
+var DRAFT_KEY = 'famaDraft';
+var draftTimer = null;
+function currentData(){
+  return {
+    title: document.getElementById('title').value,
+    tagline: document.getElementById('tagline').value,
+    description: document.getElementById('description').value,
+    members: members, threads: types, relations: rels
+  };
+}
+function scheduleDraft(){
+  if(window.__draftFrozen) return;
+  if(draftTimer) clearTimeout(draftTimer);
+  draftTimer = setTimeout(function(){
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ts: Date.now(), data: currentData() })); } catch(e) {}
+  }, 400);
+}
+function clearDraft(){ try { localStorage.removeItem(DRAFT_KEY); } catch(e) {} }
+function draftMatches(){
+  try {
+    var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    return d && JSON.stringify(d.data) === JSON.stringify(currentData());
+  } catch(e){ return true; }
 }
 
+document.getElementById('btnRestore').addEventListener('click', function(){
+  try {
+    var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    if(d && d.data){ applyLoaded(d.data); document.getElementById('draftbar').hidden = true; }
+  } catch(e){}
+});
+document.getElementById('btnDiscard').addEventListener('click', function(){
+  clearDraft(); document.getElementById('draftbar').hidden = true;
+});
+
+function applyLoaded(f){
+  members = (f.members || []).map(function(m){ return { name: m.name || '', role: m.role || '', note: m.note || '', x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
+  types = (f.threads || []).map(function(t){ return { id: t.id, label: t.label || '', color: t.color || '#c9973f' }; });
+  rels = (f.relations || []).map(function(r){ return { from: r.from || '', to: r.to || '', type: r.type || '' }; });
+  document.getElementById('title').value = f.title || '';
+  document.getElementById('tagline').value = f.tagline || '';
+  document.getElementById('description').value = f.description || '';
+  renderMembers(); renderTypes(); renderRels(); changed();
+}
+
+function bind(input, obj, key, num){
+  input.addEventListener('input', function(){
+    obj[key] = num ? Number(input.value) : input.value;
+    if(key === 'name'){ renderRels(); }
+    changed();
+  });
+}
+
+/* ---------- preview ---------- */
+var pvChips = {};
+function changed(){ buildPreview(); scheduleDraft(); }
+function buildPreview(){
+  Array.prototype.slice.call(pvBoard.querySelectorAll('.pvchip')).forEach(function(c){ c.remove(); });
+  pvChips = {};
+  members.forEach(function(m, i){
+    if(!m.name) return;
+    var chip = el('div', 'pvchip');
+    chip.style.left = (typeof m.x === 'number' ? m.x : 50) + '%';
+    chip.style.top = (typeof m.y === 'number' ? m.y : 50) + '%';
+    chip.style.setProperty('--tilt', (((i % 3) - 1) * 1.2) + 'deg');
+    chip.dataset.i = i;
+    chip.appendChild(el('b', null, m.name));
+    if(m.role) chip.appendChild(el('span', 'role', m.role));
+    pvBoard.appendChild(chip);
+    pvChips[m.name] = chip;
+  });
+  buildPreviewThreads();
+}
+function buildPreviewThreads(){
+  var W = pvBoard.clientWidth, H = pvBoard.clientHeight;
+  if(!W || !H) return;
+  pvSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  while(pvSvg.firstChild) pvSvg.removeChild(pvSvg.firstChild);
+  rels.forEach(function(r){
+    var a = pvChips[r.from], b = pvChips[r.to], t = typeById(r.type);
+    if(!a || !b) return;
+    var ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + HAP_TOP;
+    var bx = b.offsetLeft + b.offsetWidth / 2, by = b.offsetTop + HAP_TOP;
+    var dx = bx - ax, dy = by - ay;
+    var sag = Math.min(46, Math.sqrt(dx*dx + dy*dy) * 0.14);
+    var mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', 'M ' + ax + ' ' + ay + ' Q ' + mx + ' ' + my + ' ' + bx + ' ' + by);
+    p.setAttribute('class', 'pvthread');
+    p.setAttribute('stroke', (t && t.color) || '#c9973f');
+    p.setAttribute('stroke-width', 2);
+    pvSvg.appendChild(p);
+  });
+}
+var HAP_TOP = 10;
+
+var pvDrag = null;
+function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
+pvBoard.addEventListener('pointerdown', function(e){
+  var chip = e.target.closest ? e.target.closest('.pvchip') : null;
+  if(!chip) return;
+  if(e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  var br = pvBoard.getBoundingClientRect();
+  var r = chip.getBoundingClientRect();
+  pvDrag = { chip: chip, br: br, offX: (e.clientX - br.left) - (r.left - br.left), offY: (e.clientY - br.top) - (r.top - br.top) };
+  chip.classList.add('dragging');
+  try { chip.setPointerCapture(e.pointerId); } catch(err) {}
+});
+window.addEventListener('pointermove', function(e){
+  if(!pvDrag) return;
+  var br = pvDrag.br;
+  var x = clamp((e.clientX - br.left - pvDrag.offX) / br.width * 100, 2, 96);
+  var y = clamp((e.clientY - br.top - pvDrag.offY) / br.height * 100, 4, 88);
+  pvDrag.chip.style.left = x.toFixed(2) + '%';
+  pvDrag.chip.style.top = y.toFixed(2) + '%';
+  buildPreviewThreads();
+});
+window.addEventListener('pointerup', function(e){
+  if(!pvDrag) return;
+  pvDrag.chip.classList.remove('dragging');
+  var idx = parseInt(pvDrag.chip.dataset.i, 10);
+  if(!isNaN(idx) && members[idx]){
+    members[idx].x = Math.round(parseFloat(pvDrag.chip.style.left) * 2) / 2;
+    members[idx].y = Math.round(parseFloat(pvDrag.chip.style.top) * 2) / 2;
+    var row = M.children[idx];
+    if(row){
+      var nums = row.querySelectorAll('input[type=number]');
+      if(nums.length === 2){ nums[0].value = members[idx].x; nums[1].value = members[idx].y; }
+    }
+  }
+  pvDrag = null;
+  changed();
+});
+
+/* ---------- members ---------- */
 function memberRow(m){
   var row = el('div', 'mrow');
   var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать участника';
@@ -2148,10 +2320,10 @@ function memberRow(m){
     var i = members.indexOf(m);
     if(i >= 0) members.splice(i, 1);
     rels = rels.filter(function(r){ return r.from !== m.name && r.to !== m.name; });
-    renderMembers(); renderRels();
+    renderMembers(); renderRels(); changed();
   });
   row.appendChild(del);
-  var name = el('input'); name.placeholder = 'Имя в Minecraft'; name.value = m.name;
+  var name = el('input'); name.placeholder = 'Имя в Minecraft (аватарка подтянется сама)'; name.value = m.name;
   bind(name, m, 'name');
   var role = el('input'); role.placeholder = 'Роль'; role.value = m.role;
   bind(role, m, 'role');
@@ -2171,6 +2343,7 @@ function memberRow(m){
 function renderMembers(){
   M.innerHTML = '';
   members.forEach(function(m){ M.appendChild(memberRow(m)); });
+  changed();
 }
 document.getElementById('addMember').addEventListener('click', function(){
   members.push({ name: '', role: '', note: '', x: Math.round(10 + Math.random() * 76), y: Math.round(10 + Math.random() * 72) });
@@ -2179,13 +2352,14 @@ document.getElementById('addMember').addEventListener('click', function(){
   if(last && last.querySelectorAll('input')[1]) last.querySelectorAll('input')[1].focus();
 });
 
+/* ---------- threads types ---------- */
 function typeRow(t){
   var row = el('div', 'trow');
   var color = el('input'); color.type = 'color'; color.value = t.color;
-  color.addEventListener('input', function(){ t.color = color.value; });
+  color.addEventListener('input', function(){ t.color = color.value; changed(); });
   row.appendChild(color);
   var label = el('input'); label.placeholder = 'Название связи (братья, женаты...)'; label.value = t.label;
-  label.addEventListener('input', function(){ t.label = label.value; });
+  label.addEventListener('input', function(){ t.label = label.value; renderRels(); changed(); });
   row.appendChild(label);
   var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать тип нити';
   del.addEventListener('click', function(){
@@ -2193,7 +2367,7 @@ function typeRow(t){
     if(used){ alert('Есть связи этого типа на доске — сначала уберите их.'); return; }
     var i = types.indexOf(t);
     if(i >= 0) types.splice(i, 1);
-    renderTypes(); renderRels();
+    renderTypes(); renderRels(); changed();
   });
   row.appendChild(del);
   return row;
@@ -2201,6 +2375,7 @@ function typeRow(t){
 function renderTypes(){
   T.innerHTML = '';
   types.forEach(function(t){ T.appendChild(typeRow(t)); });
+  changed();
 }
 document.getElementById('addType').addEventListener('click', function(){
   types.push({ id: '', label: 'Новая связь', color: '#' + ('00000' + ((Math.random() * 0xffffff) | 0).toString(16)).slice(-6) });
@@ -2208,64 +2383,99 @@ document.getElementById('addType').addEventListener('click', function(){
   renderTypes();
 });
 
+/* ---------- relations ---------- */
 function relRow(r){
   var row = el('div', 'rrow');
   var sFrom = el('select'); var sType = el('select'); var sTo = el('select');
+  var dot = el('span', 'rel-dot');
+  function refreshDot(){
+    var t = typeById(r.type);
+    dot.style.background = (t && t.color) || '#4a5064';
+    dot.title = (t && t.label) || 'тип не выбран';
+  }
   sFrom.appendChild(opt('—', ''));
   memberNames().forEach(function(n){ sFrom.appendChild(opt(n, n)); });
   sFrom.value = r.from; if(!sFrom.value) sFrom.selectedIndex = 0;
-  sFrom.addEventListener('change', function(){ r.from = sFrom.value; });
+  sFrom.addEventListener('change', function(){ r.from = sFrom.value; changed(); });
   types.forEach(function(t){ sType.appendChild(opt(t.label || t.id, t.id)); });
   sType.value = r.type; if(!sType.value) sType.selectedIndex = 0;
-  sType.addEventListener('change', function(){ r.type = sType.value; });
+  sType.addEventListener('change', function(){ r.type = sType.value; refreshDot(); changed(); });
   sTo.appendChild(opt('—', ''));
   memberNames().forEach(function(n){ sTo.appendChild(opt(n, n)); });
   sTo.value = r.to; if(!sTo.value) sTo.selectedIndex = 0;
-  sTo.addEventListener('change', function(){ r.to = sTo.value; });
+  sTo.addEventListener('change', function(){ r.to = sTo.value; changed(); });
   var del = el('button', 'del', '×'); del.type = 'button';
   del.addEventListener('click', function(){
     var i = rels.indexOf(r);
     if(i >= 0) rels.splice(i, 1);
-    renderRels();
+    renderRels(); changed();
   });
+  row.appendChild(dot);
   row.appendChild(sFrom); row.appendChild(sType); row.appendChild(sTo); row.appendChild(del);
+  refreshDot();
   return row;
 }
 function renderRels(){
   R.innerHTML = '';
   rels.forEach(function(r){ R.appendChild(relRow(r)); });
+  changed();
 }
 document.getElementById('addRel').addEventListener('click', function(){
   var names = memberNames();
   if(names.length < 2){ alert('Сначала добавьте минимум двух участников.'); return; }
-  rels.push({ from: names[0], to: names[1] || names[0], type: (types[0] && types[0].id) || '' });
-  renderRels();
+  var pair = null;
+  outer:
+  for(var i = 0; i < names.length; i++){
+    for(var j = 0; j < names.length; j++){
+      if(i === j) continue;
+      var already = rels.some(function(r){ return (r.from === names[i] && r.to === names[j]) || (r.from === names[j] && r.to === names[i]); });
+      if(!already){ pair = { from: names[i], to: names[j] }; break outer; }
+    }
+  }
+  if(!pair){ alert('Все пары участников уже связаны. Добавьте участника или уберите связь.'); return; }
+  rels.push({ from: pair.from, to: pair.to, type: (types[0] && types[0].id) || '' });
+  renderRels(); changed();
 });
 
 document.getElementById('title').value = fam.title || '';
 document.getElementById('tagline').value = fam.tagline || '';
 document.getElementById('description').value = fam.description || '';
 
+/* draft bar */
+try {
+  var hasDraft = localStorage.getItem(DRAFT_KEY) && JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+  if(hasDraft && !draftMatches()){
+    document.getElementById('draftbar').hidden = false;
+    window.__draftFrozen = true;
+  }
+} catch(e) {}
+function unlockDraft(){ window.__draftFrozen = false; document.removeEventListener('input', unlockDraft, true); document.removeEventListener('click', unlockDraft, true); }
+document.addEventListener('input', unlockDraft, true);
+document.addEventListener('click', unlockDraft, true);
+
 document.getElementById('save').addEventListener('click', function(){
   var out = document.getElementById('out');
   out.textContent = 'Сохранение...';
-  var data = {
-    title: document.getElementById('title').value,
-    tagline: document.getElementById('tagline').value,
-    description: document.getElementById('description').value,
-    members: members,
-    threads: types,
-    relations: rels
-  };
+  var data = currentData();
   fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, data: data }) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Доска уже показывает новые данные. Позиции теперь можно менять перетаскиванием прямо на доске.'; }
-      else if(r.status === 403){ out.textContent = 'Неверный пароль.'; }
+      if(r.status === 200){
+        try { localStorage.setItem('famaPass', P.value); } catch(e) {}
+        clearDraft();
+        document.getElementById('draftbar').hidden = true;
+        out.textContent = 'Сохранено ✓ Доска уже показывает новые данные.';
+      }
+      else if(r.status === 403){ out.textContent = 'Неверный пароль. Не закрывайте страницу — черновик сохранён в браузере.'; }
       else { out.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status); }
     })
-    .catch(function(){ out.textContent = 'Сеть недоступна.'; });
+    .catch(function(){ out.textContent = 'Сеть недоступна. Не закрывайте страницу — черновик сохранён в браузере.'; });
 });
+
+renderTypes();
+renderMembers();
+renderRels();
+buildPreview();
 """
 
 FAMA_EDIT_PAGE = """<!doctype html>
@@ -2297,7 +2507,20 @@ select{margin-top:2px}
 .trow{display:grid;grid-template-columns:56px 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
 .trow input[type=color]{height:34px;padding:2px;cursor:pointer}
 .trow .del,.rrow .del{background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer}
-.rrow{display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+.rrow{display:grid;grid-template-columns:12px 1fr 1fr 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+.rel-dot{width:10px;height:10px;border-radius:50%;background:#4a5064;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.pvwrap{position:sticky;top:0;z-index:2}
+.pv{position:relative;width:100%;height:320px;border-radius:10px;background:radial-gradient(600px 300px at 60% 20%,#1c2030,transparent),linear-gradient(180deg,#181b28,#12141c);border:1px solid var(--line);overflow:hidden;box-shadow:inset 0 0 80px rgba(0,0,0,.5)}
+.pv svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pv .pvhint{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--muted);pointer-events:none}
+.pvchip{position:absolute;width:110px;background:linear-gradient(180deg,#eee4cd,#d8c9a3);color:#2c210e;border-radius:3px;padding:5px 7px 6px;font-size:11px;line-height:1.3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transform:rotate(var(--tilt,0deg));transform-origin:50% -8px;box-shadow:0 6px 14px rgba(0,0,0,.55)}
+.pvchip.dragging{cursor:grabbing;z-index:3}
+.pvchip b{display:block;color:#3a2a12;text-transform:uppercase;word-break:break-word}
+.pvchip .role{display:block;color:#7a5f33;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em}
+.pvthread{fill:none;stroke-linecap:round;opacity:.95}
+.draftbar{background:#332a12;border:1px solid #6a5520;color:#e6cf8f;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.draftbar button{margin:0;padding:6px 12px;font-size:12.5px}
+.draftbar button.ghost{background:#272310;color:#e6cf8f;border-color:#6a5520}
 button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:8px;padding:8px 16px;cursor:pointer;margin-top:10px}
 #save{display:block;margin:18px auto 0;background:var(--accent);color:#14161f;border:0;border-radius:10px;padding:12px 36px;font-size:15px;font-weight:600;cursor:pointer}
 #out{text-align:center;color:var(--muted);margin-top:10px;font-size:13px;min-height:18px}
@@ -2308,6 +2531,12 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
 <main>
 <h1>Редактор фамы</h1>
 <p class="h">Страница для старших фамы. Все правки сразу появляются на <a style="color:var(--accent)" href="/">главной доске</a>.</p>
+<div class="draftbar" id="draftbar" hidden><span>Найден несохранённый черновик с прошлого раза.</span><button id="btnRestore" type="button">Восстановить</button><button id="btnDiscard" class="ghost" type="button">Удалить</button></div>
+<div class="panel pvwrap">
+  <h3>Живое превью доски</h3>
+  <p class="sub">Это как будет выглядеть доска. Карточки можно таскать мышью прямо здесь — позиции сохранятся при сохранении.</p>
+  <div class="pv" id="pvBoard"><svg id="pvThreads"></svg><span class="pvhint">тащи карточки мышью ✓</span></div>
+</div>
 <label class="label">Название фамы</label>
 <input id="title" placeholder="Фама Ловатьер">
 <div class="grid2">
@@ -2352,6 +2581,263 @@ async def handle_fama_edit(request):
         "Referrer-Policy": "no-referrer",
         "Cache-Control": "no-cache",
     })
+
+# ======================== Панель настроек ========================
+PANEL_PAGE_STYLES = """
+:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f;--ok:#4caf6d;--err:#e07070}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+main{max-width:760px;margin:0 auto}
+h1{color:var(--gold);font-size:26px;margin:0 0 4px}
+p.h{color:var(--muted);margin:0 0 16px;font-size:13px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+.panel h3{margin:0 0 4px;font-size:15px;color:var(--gold)}
+.panel p.sub{margin:0 0 8px;font-size:12px;color:var(--muted)}
+label.label{display:block;color:var(--muted);font-size:12px;margin:12px 0 2px;text-transform:uppercase;letter-spacing:.05em}
+input{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;margin:2px 0}
+button{background:var(--accent);border:0;border-radius:9px;padding:9px 18px;cursor:pointer;color:#14161f;font-size:14px;font-weight:600;margin-top:10px}
+button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);font-weight:400}
+.out{font-size:12.5px;color:var(--muted);margin-top:8px;min-height:16px;white-space:pre-wrap}
+.out.ok{color:var(--ok)}.out.err{color:var(--err)}
+.info{font-size:12.5px;color:var(--muted);line-height:1.75;margin:4px 0 0}
+.info code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.info ol{margin:6px 0 0;padding-left:18px}
+.hdr{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hdr a{color:var(--accent);text-decoration:none;font-size:13px}
+"""
+
+PANEL_PAGE_JS = """
+var P = document.getElementById('pass');
+try { P.value = localStorage.getItem('famaPass') || ''; } catch(e) {}
+function out(id, text, cls){ var el = document.getElementById(id); el.textContent = text; el.className = 'out ' + (cls || ''); }
+function savePassIfNeeded(respStatus){
+  if(respStatus === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} }
+}
+function post(url, body, outId, okText){
+  out(outId, 'Сохранение...', '');
+  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
+    .then(function(r){
+      if(r.status === 200){ savePassIfNeeded(200); out(outId, okText || (r.json && r.json.message) || 'Сохранено ✓', 'ok'); }
+      else if(r.status === 403){ out(outId, 'Неверный пароль.', 'err'); }
+      else { out(outId, 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status), 'err'); }
+    })
+    .catch(function(){ out(outId, 'Сеть недоступна.', 'err'); });
+}
+
+document.getElementById('btnHost').addEventListener('click', function(){
+  var v = document.getElementById('hostDisplay').value.trim();
+  post('/panel/host', { password: P.value, host_display: v }, 'outHost', v ? 'Адрес сохранён ✓ На доске теперь показывается он.' : 'Сброшено ✓ Доска показывает адрес, который видит браузер.');
+});
+
+document.getElementById('btnPassword').addEventListener('click', function(){
+  var np = document.getElementById('newPass').value;
+  if(!np){ out('outPassword', 'Введите новый пароль.', 'err'); return; }
+  post('/panel/password', { password: P.value, new_password: np }, 'outPassword', 'Пароль изменён ✓ Он действует для панели и редактора сразу.');
+  document.getElementById('newPass').value = '';
+});
+
+document.getElementById('btnPing').addEventListener('click', function(){
+  var tok = document.getElementById('token').value.trim();
+  var url = document.getElementById('pingUrl').value.trim();
+  var repo = document.getElementById('repo').value.trim() || __DEFAULT_REPO__;
+  if(!tok){ out('outPing', 'Вставьте GitHub-токен (repo+workflow scope): он не сохраняется на сервере.', 'err'); return; }
+  if(!url){ out('outPing', 'Введите адрес для пинга (например https://ваш-домен/api/version).', 'err'); return; }
+  out('outPing', 'Обновляю PING_URL.txt в репозитории...', '');
+  fetch('/panel/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, token: tok, url: url, repo: repo }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
+    .then(function(r){
+      if(r.status === 200){ out('outPing', 'Готово ✓ Анти-сон теперь пингует: ' + (r.json.ping_url || url), 'ok'); document.getElementById('token').value = ''; }
+      else if(r.status === 403){ out('outPing', 'Неверный пароль панели.', 'err'); }
+      else { out('outPing', 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status), 'err'); }
+    })
+    .catch(function(){ out('outPing', 'Сеть недоступна.', 'err'); });
+});
+
+document.getElementById('curPing').textContent = 'Сейчас пингуется: ' + (__PING_URL__ || 'адрес по умолчанию из репозитория');
+document.getElementById('curHost').textContent = 'Сейчас показывается на доске: ' + (__HOST_DISPLAY__ || '(автоматически — адрес из браузера)');
+document.getElementById('curEditorPass').textContent = 'Пароль редактора: задан ' + (__HAS_PASS__ ? '(да)' : '(НЕТ — редактор выключен)');
+"""
+
+PANEL_PAGE_TEMPLATE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Панель настроек · Фама</title>
+<style>__STYLES__</style>
+</head>
+<body>
+<main>
+<div class="hdr"><h1>Панель настроек</h1><a href="/">← на доску</a></div>
+<p class="h">Всё управляется отсюда, без Render и без правки кода. Пароль здесь тот же, что и в редакторе доски.</p>
+
+<div class="panel">
+  <h3>Пароль</h3>
+  <p class="sub">Пароль от панели и редактора доски.</p>
+  <input id="pass" type="password" placeholder="Текущий пароль">
+  <label class="label">Новый пароль (не оставляйте пустым)</label>
+  <input id="newPass" type="password" placeholder="Новый пароль">
+  <button id="btnPassword" type="button">Сменить пароль</button>
+  <div class="info" id="curEditorPass"></div>
+  <div class="out" id="outPassword"></div>
+</div>
+
+<div class="panel">
+  <h3>Адрес для доски (домен)</h3>
+  <p class="sub">Что показывать на доске как «Figura Cloud IP». Полезно, если игрокам нужно вписывать красивое имя домена.</p>
+  <input id="hostDisplay" placeholder="arch-family.indevs.in (пусто — показывать реальный адрес)">
+  <button id="btnHost" type="button">Сохранить адрес</button>
+  <div class="info" id="curHost"></div>
+  <div class="out" id="outHost"></div>
+  <div class="info"><b>Как привязать свой домен:</b>
+  <ol>
+    <li>Render → твой сервис → Settings → Custom Domains → Add Custom Domain → вписать <code>arch-family.indevs.in</code></li>
+    <li>Render покажет CNAME-запись — добавь её в панели DNS у поставщика домена (тип: CNAME, имя: <code>arch-family</code>, значение: как показал Render)</li>
+    <li>Дождись статуса Verified — HTTPS Render поднимет сам</li>
+    <li>Вернись сюда и впиши этот адрес в поле выше — доска сразу покажет его игрокам</li>
+  </ol></div>
+</div>
+
+<div class="panel">
+  <h3>Анти-сон (пинг каждые 5 минут)</h3>
+  <p class="sub">GitHub Actions пингует сервер, чтобы он не засыпал. Здесь можно сменить адрес, который пингуется — нужен GitHub-токен с доступом к репозиторию (scope: repo, workflow). Токен нигде не сохраняется.</p>
+  <input id="repo" placeholder="репозиторий (по умолчанию MrXerobrinYt/figura-unchained-backend)">
+  <label class="label">Новый адрес пинга</label>
+  <input id="pingUrl" placeholder="https://arch-family.indevs.in/api/version">
+  <label class="label">GitHub-токен</label>
+  <input id="token" placeholder="ghp_...">
+  <button id="btnPing" type="button">Обновить адрес анти-сна</button>
+  <div class="info" id="curPing"></div>
+  <div class="out" id="outPing"></div>
+</div>
+
+</main>
+<script>__JS__</script>
+</body>
+</html>
+"""
+
+async def handle_panel(request):
+    if not fama_effective_password():
+        return web.Response(status=503, text="Panel disabled: set FAMA_PASSWORD or open /panel after setting a password in .env")
+    page = (PANEL_PAGE_TEMPLATE
+            .replace('__STYLES__', PANEL_PAGE_STYLES)
+            .replace('__JS__', PANEL_PAGE_JS)
+            .replace('__DEFAULT_REPO__', json.dumps(PANEL_DEFAULT_REPO))
+            .replace('__PING_URL__', json.dumps(settings_state.get('ping_url') or ''))
+            .replace('__HOST_DISPLAY__', json.dumps(settings_state.get('host_display') or ''))
+            .replace('__HAS_PASS__', json.dumps(bool(fama_effective_password()))))
+    return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
+        "Content-Security-Policy": FAMA_PAGE_CSP,
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-cache",
+    })
+
+def panel_unauthorized(ip, reason):
+    log_info(f"[PANEL] REJECT ip={ip} reason={reason}")
+    return web.json_response({"error": "Wrong password"}, status=403)
+
+async def panel_check(request, body):
+    ip = request['real_ip']
+    if not isinstance(body, dict):
+        return web.json_response({"error": "Invalid data"}, status=400)
+    password = body.get("password")
+    if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
+        return panel_unauthorized(ip, "wrong-password")
+    return None
+
+async def handle_panel_host(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    deny = await panel_check(request, body)
+    if deny:
+        return deny
+    host = fam_clean_text((body.get("host_display") or "").strip(), 253)
+    if host and not FAMA_HOST_RE.match(host):
+        return web.json_response({"error": "Invalid host (allowed: letters, digits, dots, dash; optional :port)"}, status=400)
+    settings_state["host_display"] = host
+    save_settings_state()
+    log_info(f"[PANEL] host_display set to {host or '(auto)'} ip={request['real_ip']}")
+    return web.json_response({"status": "success", "host_display": host})
+
+async def handle_panel_password(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    deny = await panel_check(request, body)
+    if deny:
+        return deny
+    new_password = fam_clean_text(body.get("new_password") or "", 128)
+    if len(new_password) < 8:
+        return web.json_response({"error": "Password must be at least 8 characters"}, status=400)
+    settings_state["fama_password"] = new_password
+    save_settings_state()
+    log_info(f"[PANEL] password changed ip={request['real_ip']}")
+    return web.json_response({"status": "success"})
+
+async def handle_panel_ping(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    deny = await panel_check(request, body)
+    if deny:
+        return deny
+    ip = request['real_ip']
+    token = (body.get("token") or "").strip()
+    url = fam_clean_text((body.get("url") or "").strip(), 253)
+    repo = fam_clean_text((body.get("repo") or "").strip(), 120) or PANEL_DEFAULT_REPO
+    if not PANEL_TOKEN_RE.match(token):
+        return web.json_response({"error": "Invalid GitHub token format"}, status=400)
+    if not PANEL_REPO_RE.match(repo):
+        return web.json_response({"error": "Invalid repository name"}, status=400)
+    if not url.startswith("https://") and not url.startswith("http://"):
+        return web.json_response({"error": "Ping URL must start with http(s)://"}, status=400)
+    if not PANEL_URL_RE.match(url.split("//", 1)[1] if url.startswith(("https://", "http://")) else url):
+        return web.json_response({"error": "Invalid ping URL"}, status=400)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "figura-unchained-panel",
+        "Content-Type": "application/json",
+    }
+    api_base = f"https://api.github.com/repos/{repo}/contents/PING_URL.txt"
+    async with ClientSession() as session:
+        try:
+            async with session.get(api_base, headers=headers, timeout=ClientTimeout(total=30)) as resp:
+                if resp.status == 200:
+                    sha = (await resp.json()).get("sha")
+                elif resp.status in (401, 403, 404):
+                    text = await resp.text()
+                    log_warn(f"[PANEL] ping update rejected: status={resp.status} body={text[:120]!r}")
+                    return web.json_response({"error": f"GitHub rejected the token or repo is wrong (HTTP {resp.status})"}, status=502)
+                else:
+                    sha = None
+            payload = {
+                "message": "panel: update ping url",
+                "content": base64.b64encode((url + "\n").encode("utf-8")).decode("ascii"),
+            }
+            if sha:
+                payload["sha"] = sha
+            async with session.put(api_base, headers=headers, json=payload, timeout=ClientTimeout(total=30)) as resp:
+                if resp.status not in (200, 201):
+                    text = await resp.text()
+                    log_warn(f"[PANEL] ping update failed: status={resp.status} body={text[:120]!r}")
+                    return web.json_response({"error": f"GitHub update failed (HTTP {resp.status})"}, status=502)
+        except Exception as e:
+            log_warn(f"[PANEL] ping update error: {e!r}")
+            return web.json_response({"error": "Cannot reach GitHub API"}, status=502)
+    settings_state["ping_url"] = url
+    settings_state["ping_repo"] = repo
+    save_settings_state()
+    log_info(f"[PANEL] ping url updated to {url} repo={repo} ip={ip}")
+    return web.json_response({"status": "success", "ping_url": url})
 
 ROOT_SCRIPT = """(function(){
 var b=document.getElementById('copy'),a=document.getElementById('addr');
@@ -2444,6 +2930,10 @@ app.router.add_get('/info', handle_info)
 app.router.add_get('/fama.json', handle_fama_data)
 app.router.add_post('/fama/save', handle_fama_save)
 app.router.add_get('/fama/edit', handle_fama_edit)
+app.router.add_get('/panel', handle_panel)
+app.router.add_post('/panel/host', handle_panel_host)
+app.router.add_post('/panel/password', handle_panel_password)
+app.router.add_post('/panel/ping', handle_panel_ping)
 app.router.add_get('/api/', handle_api_check)
 app.router.add_get('/api', handle_api_check)
 app.router.add_get('/api/version', handle_version)
