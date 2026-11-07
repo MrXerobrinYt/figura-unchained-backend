@@ -1761,6 +1761,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1807,7 +1808,7 @@ FAMA_PAGE_STYLES = """
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%,#1a1626 0%,transparent 60%),radial-gradient(900px 600px at 18% 82%,#0e1720 0%,transparent 55%),var(--bg);color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif}
-#board{position:fixed;inset:0;overflow:hidden;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 64px),repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 1px,transparent 1px 64px),repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 320px),repeating-linear-gradient(90deg,rgba(0,0,0,.25) 0 1px,transparent 1px 320px);box-shadow:inset 0 0 180px rgba(0,0,0,.75),inset 0 0 60px rgba(0,0,0,.45)}
+#board{position:fixed;inset:0;overflow:hidden;background-color:#b97f4e;background-image:linear-gradient(180deg,rgba(255,244,224,.12),rgba(66,32,8,.20)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.38 0 0 0 0 0.22 0 0 0 0 0.10 0 0 0 0.6 0'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0.96 0 0 0 0 0.87 0 0 0 0 0.70 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23c)'/%3E%3Crect width='240' height='240' filter='url(%23l)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 25% 20%,rgba(150,90,45,.35),transparent 55%),radial-gradient(ellipse at 75% 75%,rgba(90,50,20,.40),transparent 60%);background-size:auto,240px 240px,cover,cover;box-shadow:inset 0 0 200px rgba(50,25,8,.55),inset 0 0 70px rgba(40,20,5,.40)}
 #threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .thread-glow{fill:none;opacity:.22;stroke-linecap:round}
 .thread-main{fill:none;opacity:.95;stroke-linecap:round}
@@ -1841,8 +1842,8 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px}
 .hud button.on{background:var(--gold);color:#12131a;border-color:var(--gold)}
 .title{top:12px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;max-width:70vw}
-.title h1{margin:0;font-size:30px;letter-spacing:.14em;color:var(--gold);text-shadow:0 2px 16px rgba(0,0,0,.85)}
-.title .tagline{font-style:italic;color:var(--muted);font-size:13px;margin-top:3px;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.title h1{margin:0;font-size:30px;letter-spacing:.14em;color:#3f2410;text-shadow:0 1px 0 rgba(255,236,205,.55),0 2px 12px rgba(60,30,8,.35)}
+.title .tagline{font-style:italic;color:#5d3a1e;font-size:13px;margin-top:3px;text-shadow:0 1px 0 rgba(255,236,205,.4)}
 .btns{top:14px;right:14px;display:flex;gap:8px}
 .panel-box{top:60px;right:14px;width:min(380px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .panel-box .desc{white-space:pre-line;line-height:1.62;font-size:14px;color:var(--fg)}
