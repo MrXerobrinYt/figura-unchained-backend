@@ -165,7 +165,7 @@ logging.basicConfig(level=log_level, handlers=[stdout_handler, file_handler])
 def save_secure_file(path, content):
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     mode = 0o600
-    with open(os.open(path, flags, mode), "w") as f:
+    with open(os.open(path, flags, mode), "w", encoding="utf-8") as f:
         f.write(content)
 
 db_conn = sqlite3.connect('data/users.db', check_same_thread=False)
@@ -1760,6 +1760,8 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1773,11 +1775,15 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .thread-glow{fill:none;opacity:.22;stroke-linecap:round}
 .thread-main{fill:none;opacity:.95;stroke-linecap:round}
 .knot{opacity:.95}
-.photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -20px;background:linear-gradient(180deg,#eee4cd,#d8c9a3 70%,#cbb98f);color:#2c210e;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28)}
+.photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:linear-gradient(180deg,#eee4cd,#d8c9a3 70%,#cbb98f);color:#2c210e;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.photo.dragging{cursor:grabbing;z-index:3;box-shadow:0 22px 40px rgba(0,0,0,.8),inset 0 0 0 1px rgba(255,255,255,.28)}
 .photo::before{content:'';position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:64px;height:20px;background:rgba(214,179,92,.4);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 5px rgba(0,0,0,.35)}
-.photo b{display:block;font-size:13px;letter-spacing:.03em;color:#3a2a12;text-transform:uppercase;word-break:break-word}
-.photo .role{display:block;color:#7a5f33;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em}
-.photo .note{margin:0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#2c210e;max-height:7.6em;overflow:hidden}
+.photo img{display:block;width:48px;height:48px;margin:0 auto 6px;image-rendering:pixelated;border-radius:3px;background:#c9b88f;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.ava-tile{display:block;width:48px;height:48px;margin:0 auto 6px;border-radius:3px;background:linear-gradient(180deg,#a8793f,#7c5222);color:#f6ecd2;font-size:22px;line-height:48px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase}
+.mrow .ava-tile{width:28px;height:28px;line-height:28px;font-size:14px;font-weight:600}
+.photo b{display:block;font-size:13px;letter-spacing:.03em;color:#3a2a12;text-transform:uppercase;word-break:break-word;text-align:center}
+.photo .role{display:block;color:#7a5f33;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em;text-align:center}
+.photo .note{margin:6px 0 0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#2c210e;max-height:7.6em;overflow:hidden;text-align:center}
 .hud{position:fixed;z-index:5;font-family:system-ui,sans-serif}
 .hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px}
 .hud button.on{background:var(--gold);color:#12131a;border-color:var(--gold)}
@@ -1791,8 +1797,10 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .panel-box .meta a{color:var(--accent)}
 .panel-box .meta code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
 .members{top:60px;right:14px;width:min(340px,92vw);max-height:62vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
-.mrow{padding:9px 0;border-bottom:1px dashed var(--line)}
+.mrow{padding:9px 0;border-bottom:1px dashed var(--line);display:flex;gap:10px;align-items:flex-start}
 .mrow:last-child{border-bottom:0}
+.mrow img{width:28px;height:28px;image-rendering:pixelated;border-radius:4px;flex:0 0 auto;margin-top:2px}
+.mrow .who{min-width:0}
 .mrow b{color:var(--gold);font-size:14.5px}
 .mrow .role{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-left:6px}
 .mrow .note{font-size:12.5px;margin:3px 0 0;white-space:pre-line;color:var(--fg)}
@@ -1802,6 +1810,8 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .hint a{color:var(--accent);text-decoration:none}
 .hint a:hover{text-decoration:underline}
 .hint code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg)}
+#btnSavePos{background:#2a3d2c;color:#8fd6a0;border-color:#3c5a40}
+#btnSavePos:hover{background:#35503a}
 @media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}}
 """
 
@@ -1826,18 +1836,41 @@ var typeInfo = {};
 
 var board = document.getElementById('board');
 var cardEls = {};
+var byName = {};
+(fam.members || []).forEach(function(m, i){ byName[m.name] = m; });
+
+function redraw(){ drawThreads(); }
+function makeAvatar(name){
+  var img = new Image();
+  img.src = 'https://mc-heads.net/avatar/' + encodeURIComponent(name) + '/64';
+  img.onerror = function(){
+    if(img.dataset.fallback === '1'){
+      var tile = el('span', 'ava-tile');
+      tile.textContent = (name || '?').charAt(0).toUpperCase();
+      if(img.parentNode){ img.parentNode.replaceChild(tile, img); drawThreads(); }
+    } else {
+      img.dataset.fallback = '1';
+      img.src = 'https://minotar.net/avatar/' + encodeURIComponent(name) + '/64';
+    }
+  };
+  img.onload = function(){ drawThreads(); };
+  return img;
+}
 (fam.members || []).forEach(function(m, i){
   var d = el('div', 'photo');
   d.style.left = (typeof m.x === 'number' ? m.x : 50) + '%';
   d.style.top = (typeof m.y === 'number' ? m.y : 50) + '%';
   d.style.setProperty('--tilt', (((i % 5) - 2) * 0.9) + 'deg');
   d.style.setProperty('--tape', (((i % 3) - 1) * 1.6) + 'deg');
+  if(m.name){ d.appendChild(makeAvatar(m.name)); }
   d.appendChild(el('b', null, m.name));
   if(m.role){ d.appendChild(el('span', 'role', m.role)); }
   if(m.note){ d.appendChild(el('p', 'note', m.note)); }
+  d.dataset.name = m.name;
   board.appendChild(d);
   cardEls[m.name] = d;
 });
+window.addEventListener('load', redraw);
 
 var svg = document.getElementById('threads');
 var SVGNS = 'http://www.w3.org/2000/svg';
@@ -1883,6 +1916,76 @@ drawThreads();
 requestAnimationFrame(drawThreads);
 window.addEventListener('resize', drawThreads);
 
+/* ---------- drag & drop ---------- */
+var dirty = false;
+var btnSavePos = document.getElementById('btnSavePos');
+function markDirty(){
+  if(dirty) return;
+  dirty = true;
+  btnSavePos.hidden = false;
+}
+var drag = null;
+function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
+board.addEventListener('pointerdown', function(e){
+  var card = e.target.closest ? e.target.closest('.photo') : null;
+  if(!card || !card.dataset.name) return;
+  if(e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  var br = board.getBoundingClientRect();
+  var r = card.getBoundingClientRect();
+  drag = { card: card, br: br, offX: (e.clientX - br.left) - (r.left - br.left), offY: (e.clientY - br.top) - (r.top - br.top) };
+  card.classList.add('dragging');
+  try { card.setPointerCapture(e.pointerId); } catch(err) {}
+});
+window.addEventListener('pointermove', function(e){
+  if(!drag) return;
+  var br = drag.br;
+  var x = clamp((e.clientX - br.left - drag.offX) / br.width * 100, 2, 96);
+  var y = clamp((e.clientY - br.top - drag.offY) / br.height * 100, 4, 88);
+  drag.card.style.left = x.toFixed(2) + '%';
+  drag.card.style.top = y.toFixed(2) + '%';
+  drawThreads();
+});
+window.addEventListener('pointerup', function(e){
+  if(!drag) return;
+  drag.card.classList.remove('dragging');
+  var m = byName[drag.card.dataset.name];
+  if(m){
+    m.x = Math.round(parseFloat(drag.card.style.left) * 2) / 2;
+    m.y = Math.round(parseFloat(drag.card.style.top) * 2) / 2;
+  }
+  drag = null;
+  markDirty();
+});
+
+btnSavePos.addEventListener('click', function(){
+  var pass = null;
+  try { pass = localStorage.getItem('famaPass'); } catch(err) {}
+  if(!pass){ pass = prompt('Пароль редактора (FAMA_PASSWORD):'); if(pass === null) return; }
+  btnSavePos.textContent = 'Сохранение...';
+  var data = {
+    title: fam.title, tagline: fam.tagline, description: fam.description,
+    members: fam.members, threads: fam.threads, relations: fam.relations
+  };
+  fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass, data: data }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
+    .then(function(r){
+      if(r.status === 200){
+        try { localStorage.setItem('famaPass', pass); } catch(err) {}
+        btnSavePos.textContent = 'Сохранено ✓';
+        setTimeout(function(){ btnSavePos.hidden = true; btnSavePos.textContent = 'Сохранить позиции'; dirty = false; }, 1600);
+      } else if(r.status === 403){
+        btnSavePos.textContent = 'Неверный пароль';
+        try { localStorage.removeItem('famaPass'); } catch(err) {}
+        setTimeout(function(){ btnSavePos.textContent = 'Сохранить позиции'; }, 1600);
+      } else {
+        btnSavePos.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status);
+        setTimeout(function(){ btnSavePos.textContent = 'Сохранить позиции'; }, 2400);
+      }
+    })
+    .catch(function(){ btnSavePos.textContent = 'Сеть недоступна'; setTimeout(function(){ btnSavePos.textContent = 'Сохранить позиции'; }, 2000); });
+});
+
 var legend = document.getElementById('legend');
 (fam.threads || []).forEach(function(t){
   var item = el('span');
@@ -1895,11 +1998,12 @@ var legend = document.getElementById('legend');
 var membersPanel = document.getElementById('membersPanel');
 (fam.members || []).forEach(function(m){
   var row = el('div', 'mrow');
-  var head = el('span');
-  head.appendChild(el('b', null, m.name));
-  if(m.role){ var r = el('span', 'role', m.role); head.appendChild(r); }
-  row.appendChild(head);
-  if(m.note){ row.appendChild(el('p', 'note', m.note)); }
+  if(m.name){ row.appendChild(makeAvatar(m.name)); }
+  var who = el('span', 'who');
+  who.appendChild(el('b', null, m.name));
+  if(m.role){ who.appendChild(el('span', 'role', m.role)); }
+  if(m.note){ who.appendChild(el('p', 'note', m.note)); }
+  row.appendChild(who);
   membersPanel.appendChild(row);
 });
 
@@ -1935,6 +2039,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 </div>
 
 <div class="hud btns">
+<button id="btnSavePos" type="button" hidden>Сохранить позиции</button>
 <button id="btnMembers" type="button">Участники</button>
 <button id="btnInfo" type="button">О фаме</button>
 </div>
@@ -1951,7 +2056,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="hud hint">
 Figura Cloud IP: <code>__HOST__</code><br>
-<a href="/fama/edit">редактировать</a>
+карточки можно перетаскивать мышью · <a href="/fama/edit">редактировать</a>
 </div>
 
 <script>__JS__</script>
@@ -1959,7 +2064,7 @@ Figura Cloud IP: <code>__HOST__</code><br>
 </html>
 """
 
-FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://mc-heads.net; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 FAMA_HOST_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
 
@@ -2155,7 +2260,7 @@ document.getElementById('save').addEventListener('click', function(){
   fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, data: data }) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Доска уже показывает новые данные.'; }
+      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Доска уже показывает новые данные. Позиции теперь можно менять перетаскиванием прямо на доске.'; }
       else if(r.status === 403){ out.textContent = 'Неверный пароль.'; }
       else { out.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status); }
     })
@@ -2213,7 +2318,7 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
 <textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
 <div class="panel">
   <h3>Участники</h3>
-  <p class="sub">X и Y — позиция карточки на доске в процентах (X от 2 до 96, Y от 4 до 88).</p>
+  <p class="sub">Позицию карточки лучше менять перетаскиванием прямо на доске — здесь цифры X/Y как запасной вариант.</p>
   <div id="members"></div>
   <button class="ghost" id="addMember" type="button">+ Добавить участника</button>
 </div>
