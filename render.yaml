@@ -63,3 +63,7 @@ services:
         value: "main"
       - key: GITHUB_TOKEN
         sync: false
+      # Пароль страницы /fama/edit (древо фамы). С s y n c: false Render спросит значение при деплое.
+      - key: FAMA_PASSWORD
+        sync: false
+        generateValue: false
