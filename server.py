@@ -1,5 +1,6 @@
 import hashlib
 import html
+import random
 import uuid
 import os
 import re
@@ -839,10 +840,18 @@ def pride_badges_for(target_uuid):
 
 load_badges()
 
-# ======================== Сайт фамы (древо) ========================
+# ======================== Сайт фамы (деревянная доска) ========================
 FAMA_PASSWORD = os.environ.get("FAMA_PASSWORD", "").strip()
 FAMA_DATA_PATH = os.path.join("data", "fam.json")
 FAMA_SEED_PATH = "fam.json"
+
+FAMA_DEFAULT_THREADS = [
+    {"id": "married", "label": "Женаты", "color": "#e05252"},
+    {"id": "kin", "label": "Кровь / родство", "color": "#c9973f"},
+    {"id": "sibling", "label": "Братья / сёстры", "color": "#5b8def"},
+    {"id": "friend", "label": "Друзья", "color": "#4caf6d"},
+    {"id": "rival", "label": "Вражда", "color": "#9b59d0"},
+]
 
 fam_state = {}
 
@@ -852,22 +861,34 @@ def fam_clean_text(value, limit):
     value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", value)
     return value.strip()[:limit]
 
+def fam_clamp_pos(value, low, high, fallback):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    return round(min(high, max(low, value)), 1)
+
+def fam_slug(label, existing):
+    base = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_") or "thread"
+    slug = base
+    n = 2
+    while slug in existing:
+        slug = base + "_" + str(n)
+        n += 1
+    return slug
+
 def fam_clean_member(raw):
     if not isinstance(raw, dict):
         raise ValueError("member must be an object")
     name = re.sub(r"\s+", " ", fam_clean_text(raw.get("name"), 48))
     if not name:
         raise ValueError("every member needs a name")
-    parents = []
-    for parent in (raw.get("parents") or []):
-        parent = re.sub(r"\s+", " ", fam_clean_text(parent, 48))
-        if parent and parent not in parents:
-            parents.append(parent)
     return {
         "name": name,
         "role": fam_clean_text(raw.get("role"), 64),
-        "parents": parents,
         "note": fam_clean_text(raw.get("note"), 500),
+        "x": fam_clamp_pos(raw.get("x"), 2, 96, round(10 + random.random() * 78, 1)),
+        "y": fam_clamp_pos(raw.get("y"), 4, 88, round(8 + random.random() * 74, 1)),
     }
 
 def fam_sanitize(data):
@@ -878,11 +899,54 @@ def fam_sanitize(data):
         raise ValueError("members must be a list")
     if len(members_raw) > 200:
         raise ValueError("too many members (max 200)")
+    members = [fam_clean_member(m) for m in members_raw]
+    names = {m["name"] for m in members}
+
+    types = []
+    type_ids = set()
+    for raw_type in (data.get("threads") or []):
+        if not isinstance(raw_type, dict) or len(types) >= 16:
+            continue
+        label = fam_clean_text(raw_type.get("label"), 32)
+        if not label:
+            continue
+        tid = fam_clean_text(raw_type.get("id"), 24)
+        if not re.match(r"^[a-z0-9_]{1,24}$", tid or ""):
+            tid = fam_slug(label, type_ids)
+        elif tid in type_ids:
+            tid = fam_slug(tid, type_ids)
+        color = raw_type.get("color")
+        if not isinstance(color, str) or not re.match(r"^#[0-9a-fA-F]{3,8}$", color):
+            color = "#c9973f"
+        type_ids.add(tid)
+        types.append({"id": tid, "label": label, "color": color})
+    if not types:
+        for default_type in FAMA_DEFAULT_THREADS:
+            types.append(dict(default_type))
+            type_ids.add(default_type["id"])
+
+    relations = []
+    seen_pairs = set()
+    for raw_rel in (data.get("relations") or []):
+        if not isinstance(raw_rel, dict) or len(relations) >= 400:
+            continue
+        rel_from = fam_clean_text(raw_rel.get("from"), 48)
+        rel_to = fam_clean_text(raw_rel.get("to"), 48)
+        rel_type = fam_clean_text(raw_rel.get("type"), 24)
+        if rel_from in names and rel_to in names and rel_from != rel_to and rel_type in type_ids:
+            key = (rel_from, rel_to, rel_type)
+            if key in seen_pairs:
+                continue
+            seen_pairs.add(key)
+            relations.append({"from": rel_from, "to": rel_to, "type": rel_type})
+
     return {
         "title": fam_clean_text(data.get("title"), 60) or "Фама",
         "tagline": fam_clean_text(data.get("tagline"), 120),
         "description": fam_clean_text(data.get("description"), 4000),
-        "members": [fam_clean_member(m) for m in members_raw],
+        "threads": types,
+        "members": members,
+        "relations": relations,
     }
 
 def load_fam_state():
@@ -892,13 +956,18 @@ def load_fam_state():
             with open(path, encoding="utf-8") as f:
                 data = fam_sanitize(json.load(f))
             fam_state = data
-            log_info(f"[FAMA] loaded from {path}: members={len(data['members'])}")
+            log_info(f"[FAMA] loaded from {path}: members={len(data['members'])}, threads={len(data['threads'])}")
             return
         except (OSError, ValueError) as e:
             log_warn(f"[FAMA] cannot use {path}: {e!r}")
-    fam_state = {"title": "Фама", "tagline": "", "description": "", "members": []}
-
-load_fam_state()
+    fam_state = {
+        "title": "Фама",
+        "tagline": "",
+        "description": "",
+        "threads": [dict(default_type) for default_type in FAMA_DEFAULT_THREADS],
+        "members": [],
+        "relations": [],
+    }
 
 @web.middleware
 async def security_middleware(request, handler):
@@ -1687,41 +1756,41 @@ async def cleanup_background_tasks(app):
 # ======================== Страницы фамы ========================
 FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
-    # '<' -> \u003c чтобы не закрыть <script> случайно
+    # '<' -> \u003c, чтобы не закрыть <script> случайно
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
 FAMA_PAGE_STYLES = """
-:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+:root{--bg:#0f111a;--bg2:#191d29;--fg:#e8e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif;padding:24px 14px 40px}
-main{max-width:1000px;margin:0 auto}
-header.t{text-align:center;margin:8px 0 26px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#222a3f,var(--bg)) fixed;color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif;padding:24px 14px 40px}
+main{max-width:1040px;margin:0 auto}
+header.t{text-align:center;margin:8px 0 24px}
 h1{margin:0;font-size:42px;letter-spacing:.04em;color:var(--gold);font-weight:600}
 .tagline{color:var(--muted);margin:6px 0 0;font-style:italic}
-.desc{white-space:pre-line;color:var(--fg);margin:14px auto 0;max-width:720px;line-height:1.6}
+.desc{white-space:pre-line;color:var(--fg);margin:14px auto 0;max-width:760px;line-height:1.6}
 hr.r{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:22px 0}
 h2{text-align:center;color:var(--gold);font-weight:500;letter-spacing:.08em;font-size:20px;margin:26px 0 14px}
+.board{position:relative;width:100%;max-width:1000px;margin:0 auto;aspect-ratio:16/10;min-height:340px;border-radius:14px;background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,0) 26%,rgba(0,0,0,.1) 60%,rgba(0,0,0,.44)),repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 118px,rgba(0,0,0,.25) 118px 122px),repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,rgba(0,0,0,0) 2px 6px),linear-gradient(180deg,#9a6931,#7c4f23 58%,#64401a);box-shadow:0 0 0 10px #4d3324,0 0 0 12px #241609,inset 0 0 50px rgba(0,0,0,.52),0 16px 34px rgba(0,0,0,.55)}
+#threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.pin-card{position:absolute;width:134px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -16px;background:linear-gradient(180deg,#f6ecd2,#e4d2a8);color:#33240f;border-radius:5px;padding:10px 11px 12px;box-shadow:0 8px 14px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.09)}
+.pin-card::before{content:'';position:absolute;top:-8px;left:50%;margin-left:-8px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#ffa090,#c0392b 55%,#7d1f14);box-shadow:0 4px 5px rgba(0,0,0,.5)}
+.pin-card b{display:block;font-size:15px;color:#5c2f14;word-break:break-word}
+.pin-card .role{display:block;color:#7a5b31;font-size:10.5px;margin:2px 0 5px;text-transform:uppercase;letter-spacing:.05em}
+.pin-card .note{margin:0;white-space:pre-line;font-size:11.5px;line-height:1.45;color:#33240f;max-height:7.4em;overflow:hidden}
+.thread{fill:none;opacity:.92;stroke-linecap:round}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;margin-top:16px;color:var(--muted);font-size:13px;font-family:system-ui,sans-serif}
+.legend .sw{display:inline-block;width:30px;height:4px;border-radius:3px;margin-right:7px;vertical-align:middle}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card{background:#1e2432;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .card b{display:block;font-size:17px;color:var(--gold)}
 .card .role{display:block;color:var(--muted);font-size:13px;margin:2px 0 8px;text-transform:uppercase;letter-spacing:.06em}
 .card .note{margin:0;white-space:pre-line;font-size:14px;line-height:1.55;color:var(--fg)}
-.card .par{margin:8px 0 0;color:var(--muted);font-size:12px}
-.card .par i{font-style:normal}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:34px;line-height:1.8;font-family:system-ui,sans-serif}
 footer a{color:var(--accent);text-decoration:none}footer a:hover{text-decoration:underline}
 footer code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
-.tree{overflow-x:auto}
-.tree ul{list-style:none;margin:0;padding:0}
-.tree li{margin:6px 0 6px 20px;padding-left:16px;position:relative}
-.tree li::before{content:'';position:absolute;top:-8px;left:0;border-left:1px solid var(--line);border-bottom:1px solid var(--line);width:12px;height:14px}
-.tree>ul>li{margin-left:0}
-.tree>ul>li::before{display:none}
-.tree .who{display:inline-block;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:8px 14px}
-.tree .who b{color:var(--gold)}
-.tree .who span{color:var(--muted);font-size:12px}
-@media(max-width:600px){h1{font-size:32px}}
+@media(max-width:640px){h1{font-size:32px}.pin-card{width:112px}.board{min-height:300px}}
 """
 
 FAMA_PAGE_JS = """
@@ -1733,60 +1802,66 @@ if(!fam.tagline) document.getElementById('tagline').hidden = true;
 if(!fam.description) document.getElementById('desc').hidden = true;
 document.getElementById('updated').textContent = fam.updated || '—';
 
-var byName = {};
-var birth = {};      // член фамы -> массив детей
-fam.members.forEach(function(m){ byName[m.name] = m; });
-fam.members.forEach(function(m){
-  (m.parents||[]).forEach(function(p){
-    if(byName[p]){
-      if(!birth[p]) birth[p] = [];
-      if(birth[p].indexOf(m.name) < 0) birth[p].push(m.name);
-    }
+var typeInfo = {};
+(fam.threads || []).forEach(function(t){ typeInfo[t.id] = t; });
+
+function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+var board = document.getElementById('board');
+var cardEls = {};
+(fam.members || []).forEach(function(m, i){
+  var d = el('div', 'pin-card');
+  d.style.left = (typeof m.x === 'number' ? m.x : 50) + '%';
+  d.style.top = (typeof m.y === 'number' ? m.y : 50) + '%';
+  d.style.setProperty('--tilt', (((i % 5) - 2) * 0.7) + 'deg');
+  d.appendChild(el('b', null, m.name));
+  if(m.role){ d.appendChild(el('span', 'role', m.role)); }
+  if(m.note){ d.appendChild(el('p', 'note', m.note)); }
+  board.appendChild(d);
+  cardEls[m.name] = d;
+});
+
+var svg = document.getElementById('threads');
+function drawThreads(){
+  var W = board.clientWidth, H = board.clientHeight;
+  if(!W || !H) return;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  (fam.relations || []).forEach(function(rel){
+    var a = cardEls[rel.from], b = cardEls[rel.to], t = typeInfo[rel.type];
+    if(!a || !b) return;
+    var ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + 7;
+    var bx = b.offsetLeft + b.offsetWidth / 2, by = b.offsetTop + 7;
+    var dx = bx - ax, dy = by - ay;
+    var sag = Math.min(52, Math.sqrt(dx*dx + dy*dy) * 0.13);
+    var mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', 'M ' + ax.toFixed(1) + ' ' + ay.toFixed(1) + ' Q ' + mx.toFixed(1) + ' ' + my.toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1));
+    p.setAttribute('class', 'thread');
+    p.setAttribute('stroke', (t && t.color) || '#c9973f');
+    p.setAttribute('stroke-width', 2.4);
+    svg.appendChild(p);
   });
+}
+requestAnimationFrame(drawThreads);
+window.addEventListener('resize', drawThreads);
+
+var legend = document.getElementById('legend');
+(fam.threads || []).forEach(function(t){
+  var item = el('span');
+  var sw = el('span', 'sw'); sw.style.background = t.color;
+  item.appendChild(sw);
+  item.appendChild(document.createTextNode(t.label));
+  legend.appendChild(item);
 });
 
-// карточки участников
 var cards = document.getElementById('cards');
-fam.members.forEach(function(m){
-  var d = document.createElement('div'); d.className = 'card';
-  var b = document.createElement('b'); b.textContent = m.name; d.appendChild(b);
-  if(m.role){ var r = document.createElement('span'); r.className = 'role'; r.textContent = m.role; d.appendChild(r); }
-  if(m.note){ var n = document.createElement('p'); n.className = 'note'; n.textContent = m.note; d.appendChild(n); }
-  var ps = (m.parents||[]).filter(function(p){ return byName[p]; });
-  if(ps.length){ var pp = document.createElement('p'); pp.className = 'par';
-    pp.appendChild(document.createTextNode('родители: '));
-    ps.forEach(function(p, i){ if(i) pp.appendChild(document.createTextNode(', '));
-      var it = document.createElement('i'); it.textContent = p; pp.appendChild(it); });
-    d.appendChild(pp); }
+(fam.members || []).forEach(function(m){
+  var d = el('div', 'card');
+  d.appendChild(el('b', null, m.name));
+  if(m.role){ d.appendChild(el('span', 'role', m.role)); }
+  if(m.note){ d.appendChild(el('p', 'note', m.note)); }
   cards.appendChild(d);
-});
-
-// древо (циклы отсекаем)
-var tree = document.getElementById('tree');
-function isRoot(m){ return !(m.parents||[]).some(function(p){ return byName[p]; }); }
-var roots = fam.members.filter(isRoot);
-if(!fam.members.length){ tree.textContent = 'Пока никого.'; }
-var seen = {};
-function addName(li, name){
-  var m = byName[name];
-  var w = document.createElement('div'); w.className = 'who';
-  var b = document.createElement('b'); b.textContent = m.name; w.appendChild(b);
-  if(m.role){ var s = document.createElement('span'); s.appendChild(document.createTextNode(' · ')); var i2=document.createElement('span'); i2.textContent=m.role; s.appendChild(i2); w.appendChild(s); }
-  li.appendChild(w);
-}
-function build(name, ul){
-  if(seen[name]) return; seen[name] = true;
-  var li = document.createElement('li');
-  addName(li, name);
-  var kids = birth[name] || [];
-  if(kids.length){ var sub = document.createElement('ul'); kids.forEach(function(k){ build(k, sub); }); li.appendChild(sub); }
-  ul.appendChild(li);
-}
-roots.forEach(function(m){
-  seen = {};
-  var top = document.createElement('ul');
-  build(m.name, top);
-  tree.appendChild(top);
 });
 """
 
@@ -1796,8 +1871,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>__TITLE__ · Древо фамы</title>
-<meta name="favicon" content="none">
+<title>__TITLE__ · Доска фамы</title>
 <style>__STYLES__</style>
 </head>
 <body>
@@ -1808,19 +1882,16 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <p class="desc" id="desc"></p>
 </header>
 <hr class="r">
-<section>
-<h2>Древо</h2>
-<div class="tree" id="tree"></div>
-</section>
+<h2>Доска</h2>
+<div class="board" id="board"><svg id="threads"></svg></div>
+<div class="legend" id="legend"></div>
 <hr class="r">
-<section>
 <h2>Участники</h2>
 <div class="cards" id="cards"></div>
-</section>
 <footer>
 обновлено: <span id="updated"></span><br>
 Это не веб-сайт: впишите адрес <code>__HOST__</code> в настройках Figura, чтобы работать в игре.<br>
-<a href="/fama/edit">редактирование (для старших фамы)</a> · <a href="/info">что это за адрес?</a>
+<a href="/fama/edit">редактировать</a> · <a href="/info">что это за адрес?</a>
 </footer>
 </main>
 <script>__JS__</script>
@@ -1875,72 +1946,158 @@ async def handle_fama_save(request):
         await asyncio.to_thread(save_secure_file, FAMA_DATA_PATH, json.dumps(fam_state, ensure_ascii=False, indent=2))
     except OSError as e:
         log_warn(f"[FAMA] disk save failed: {e!r} (page still serves the new data from memory)")
-    log_info(f"[FAMA] save OK members={len(fam_state['members'])} ip={ip}")
+    log_info(f"[FAMA] save OK members={len(fam_state['members'])} relations={len(fam_state['relations'])} ip={ip}")
     return web.json_response({"status": "success"})
 
 FAMA_EDIT_SCRIPT = """
 var fam = __FAMA_DATA__;
 var P = document.getElementById('pass');
 try { P.value = localStorage.getItem('famaPass') || ''; } catch(e) {}
-var list = document.getElementById('members');
+var M = document.getElementById('members');
+var R = document.getElementById('rels');
+var T = document.getElementById('types');
+
+var members = (fam.members || []).map(function(m){ return { name: m.name || '', role: m.role || '', note: m.note || '', x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
+var types = (fam.threads || []).map(function(t){ return { id: t.id, label: t.label || '', color: t.color || '#c9973f' }; });
+var rels = (fam.relations || []).map(function(r){ return { from: r.from || '', to: r.to || '', type: r.type || '' }; });
 
 function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+function opt(label, value){ var o = document.createElement('option'); o.value = value; o.textContent = label; return o; }
+function slug(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
+function uniqueId(base){
+  base = slug(base) || 'thread';
+  var id = base, n = 2;
+  while(types.some(function(t){ return t.id === id; })){ id = base + '_' + n; n = n + 1; }
+  return id;
+}
+function memberNames(){ return members.filter(function(m){ return m.name; }).map(function(m){ return m.name; }); }
+
+function bind(input, obj, key, num){
+  input.addEventListener('input', function(){ obj[key] = num ? Number(input.value) : input.value; });
+}
 
 function memberRow(m){
   var row = el('div', 'mrow');
-  var name = el('input'); name.className = 'f-name'; name.placeholder = 'Имя / ник в Minecraft (обязательно)'; name.value = m.name || '';
-  var role = el('input'); role.className = 'f-role'; role.placeholder = 'Роль (Основатель, Наследник...)'; role.value = m.role || '';
-  var par = el('input'); par.className = 'f-par'; par.placeholder = 'Родители — имена через запятую'; par.value = (m.parents||[]).join(', ');
-  var note = document.createElement('textarea'); note.className = 'f-note'; note.placeholder = 'Заметка: кто такой, биография, титул...'; note.rows = 2; note.value = m.note || '';
   var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать участника';
-  del.addEventListener('click', function(){ row.remove(); });
-  row.appendChild(del); row.appendChild(name); row.appendChild(role); row.appendChild(par);
+  del.addEventListener('click', function(){
+    var i = members.indexOf(m);
+    if(i >= 0) members.splice(i, 1);
+    rels = rels.filter(function(r){ return r.from !== m.name && r.to !== m.name; });
+    renderMembers(); renderRels();
+  });
+  row.appendChild(del);
+  var name = el('input'); name.placeholder = 'Имя в Minecraft'; name.value = m.name;
+  bind(name, m, 'name');
+  var role = el('input'); role.placeholder = 'Роль'; role.value = m.role;
+  bind(role, m, 'role');
+  row.appendChild(name); row.appendChild(role);
+  var note = document.createElement('textarea'); note.className = 'span2'; note.rows = 2; note.placeholder = 'Заметка: кто такой, титул, биография...';
+  note.value = m.note; bind(note, m, 'note');
   row.appendChild(note);
+  var geo = el('div', 'geo');
+  var xlab = el('div', 'pos'); xlab.appendChild(document.createTextNode('X')); geo.appendChild(xlab);
+  var x = el('input'); x.type = 'number'; x.min = '2'; x.max = '96'; x.step = '0.5'; x.value = m.x; bind(x, m, 'x', true);
+  var ylab = el('div', 'pos'); ylab.appendChild(document.createTextNode('Y')); geo.appendChild(ylab);
+  var y = el('input'); y.type = 'number'; y.min = '4'; y.max = '88'; y.step = '0.5'; y.value = m.y; bind(y, m, 'y', true);
+  geo.appendChild(x); geo.appendChild(y);
+  row.appendChild(geo);
   return row;
 }
-function addRow(m){ var r = memberRow(m || {}); list.appendChild(r); return r; }
-fam.members.forEach(function(m){ addRow(m); });
-document.getElementById('add').addEventListener('click', function(){ addRow(); list.lastChild.firstChild.nextSibling.focus(); });
+function renderMembers(){
+  M.innerHTML = '';
+  members.forEach(function(m){ M.appendChild(memberRow(m)); });
+}
+document.getElementById('addMember').addEventListener('click', function(){
+  members.push({ name: '', role: '', note: '', x: Math.round(10 + Math.random() * 76), y: Math.round(10 + Math.random() * 72) });
+  renderMembers();
+  var last = M.lastChild;
+  if(last && last.querySelectorAll('input')[1]) last.querySelectorAll('input')[1].focus();
+});
 
-fam.title = fam.title || 'Фама';
-document.getElementById('title').value = fam.title;
+function typeRow(t){
+  var row = el('div', 'trow');
+  var color = el('input'); color.type = 'color'; color.value = t.color;
+  color.addEventListener('input', function(){ t.color = color.value; });
+  row.appendChild(color);
+  var label = el('input'); label.placeholder = 'Название связи (братья, женаты...)'; label.value = t.label;
+  label.addEventListener('input', function(){ t.label = label.value; });
+  row.appendChild(label);
+  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать тип нути';
+  del.addEventListener('click', function(){
+    var used = rels.some(function(r){ return r.type === t.id; });
+    if(used){ alert('Есть связи этого типа на доске — сначала уберите их.'); return; }
+    var i = types.indexOf(t);
+    if(i >= 0) types.splice(i, 1);
+    renderTypes(); renderRels();
+  });
+  row.appendChild(del);
+  return row;
+}
+function renderTypes(){
+  T.innerHTML = '';
+  types.forEach(function(t){ T.appendChild(typeRow(t)); });
+}
+document.getElementById('addType').addEventListener('click', function(){
+  types.push({ id: '', label: 'Новая связь', color: '#' + ('00000' + ((Math.random() * 0xffffff) | 0).toString(16)).slice(-6) });
+  types[types.length - 1].id = uniqueId('thread');
+  renderTypes();
+});
+
+function relRow(r){
+  var row = el('div', 'rrow');
+  var sFrom = el('select'); var sType = el('select'); var sTo = el('select');
+  sFrom.appendChild(opt('—', ''));
+  memberNames().forEach(function(n){ sFrom.appendChild(opt(n, n)); });
+  sFrom.value = r.from; if(!sFrom.value) sFrom.selectedIndex = 0;
+  sFrom.addEventListener('change', function(){ r.from = sFrom.value; });
+  types.forEach(function(t){ sType.appendChild(opt(t.label || t.id, t.id)); });
+  sType.value = r.type; if(!sType.value) sType.selectedIndex = 0;
+  sType.addEventListener('change', function(){ r.type = sType.value; });
+  sTo.appendChild(opt('—', ''));
+  memberNames().forEach(function(n){ sTo.appendChild(opt(n, n)); });
+  sTo.value = r.to; if(!sTo.value) sTo.selectedIndex = 0;
+  sTo.addEventListener('change', function(){ r.to = sTo.value; });
+  var del = el('button', 'del', '×'); del.type = 'button';
+  del.addEventListener('click', function(){
+    var i = rels.indexOf(r);
+    if(i >= 0) rels.splice(i, 1);
+    renderRels();
+  });
+  row.appendChild(sFrom); row.appendChild(sType); row.appendChild(sTo); row.appendChild(del);
+  return row;
+}
+function renderRels(){
+  R.innerHTML = '';
+  rels.forEach(function(r){ R.appendChild(relRow(r)); });
+}
+document.getElementById('addRel').addEventListener('click', function(){
+  var names = memberNames();
+  if(names.length < 2){ alert('Сначала добавьте минимум двух участников.'); return; }
+  rels.push({ from: names[0], to: names[1] || names[0], type: (types[0] && types[0].id) || '' });
+  renderRels();
+});
+
+document.getElementById('title').value = fam.title || '';
 document.getElementById('tagline').value = fam.tagline || '';
 document.getElementById('description').value = fam.description || '';
 
 document.getElementById('save').addEventListener('click', function(){
   var out = document.getElementById('out');
-  var members = [];
-  var names = [];
-  var dup = null;
-  Array.prototype.forEach.call(list.children, function(row){
-    var name = row.querySelector('.f-name').value.trim();
-    if(!name) return;
-    names.push(name);
-  });
-  Array.prototype.forEach.call(list.children, function(row){
-    var name = row.querySelector('.f-name').value.trim();
-    if(!name) return;
-    var parents = row.querySelector('.f-par').value.split(/[,;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
-    members.push({
-      name: name,
-      role: row.querySelector('.f-role').value.trim(),
-      parents: parents,
-      note: row.querySelector('.f-note').value
-    });
-  });
-  if(!fam.title && document.getElementById('title').value === '') fam.title = 'Фама';
+  out.textContent = 'Сохранение...';
   var data = {
     title: document.getElementById('title').value,
     tagline: document.getElementById('tagline').value,
     description: document.getElementById('description').value,
-    members: members
+    members: members,
+    threads: types,
+    relations: rels
   };
   fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, data: data }) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Главная страница уже показывает новые данные.'; }
+      if(r.status === 200){ try { localStorage.setItem('famaPass', P.value); } catch(e) {} out.textContent = 'Сохранено ✓ Главная доска уже показывает новые данные.'; }
       else if(r.status === 403){ out.textContent = 'Неверный пароль.'; }
-      else { out.textContent = 'Ошибка: ' + (r.json && r.json.error ? r.json.error : r.status); }
+      else { out.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status); }
     })
     .catch(function(){ out.textContent = 'Сеть недоступна.'; });
 });
@@ -1957,42 +2114,63 @@ FAMA_EDIT_PAGE = """<!doctype html>
 :root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
 body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
-main{max-width:860px;margin:0 auto}
+main{max-width:900px;margin:0 auto}
 h1{color:var(--gold);font-size:26px;margin:0 0 4px}
-p.h{color:var(--muted);margin:0 0 18px;font-size:13px}
-input,textarea{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;margin:4px 0}
-label{display:block;color:var(--muted);font-size:12px;margin-top:12px;text-transform:uppercase;letter-spacing:.05em}
+p.h{color:var(--muted);margin:0 0 16px;font-size:13px}
+input,textarea,select{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;margin:4px 0}
+select{margin-top:2px}
+.label{display:block;color:var(--muted);font-size:12px;margin-top:14px;text-transform:uppercase;letter-spacing:.05em}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
-.mrow{position:relative;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;grid-template-columns:1fr 1fr;display:grid;gap:8px}
-.mrow .del{position:absolute;top:10px;right:0;background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.tx{grid-column:1 / -1}
-#save{display:block;margin:18px auto 0;background:var(--accent);color:#14161f;border:0;border-radius:10px;padding:12px 34px;font-size:15px;font-weight:600;cursor:pointer}
+.panel h3{margin:0 0 4px;font-size:15px;color:var(--gold)}
+.panel p.sub{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.mrow{position:relative;display:grid;grid-template-columns:1.25fr .75fr;gap:6px 8px;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;padding-right:38px}
+.mrow .del{position:absolute;top:12px;right:0;background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer}
+.span2{grid-column:1 / -1}
+.geo{grid-column:1 / -1;display:flex;gap:8px;align-items:center}
+.geo input{margin:0}
+.geo .pos{width:14px;color:var(--muted);font-size:12px;text-align:right}
+.trow{display:grid;grid-template-columns:56px 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+.trow input[type=color]{height:34px;padding:2px;cursor:pointer}
+.trow .del,.rrow .del{background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer}
+.rrow{display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:8px;padding:8px 16px;cursor:pointer;margin-top:10px}
+#save{display:block;margin:18px auto 0;background:var(--accent);color:#14161f;border:0;border-radius:10px;padding:12px 36px;font-size:15px;font-weight:600;cursor:pointer}
 #out{text-align:center;color:var(--muted);margin-top:10px;font-size:13px;min-height:18px}
-button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:8px;padding:8px 18px;cursor:pointer}
-.n{position:relative}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 </style>
 </head>
 <body>
 <main>
 <h1>Редактор фамы</h1>
-<p class="h">Страница для старших фамы. Все правки сразу отображаются на главной. Код заполните ваш детям ниже (родители = строки, из которых кто-то происходит). <b style="color:var(--gold)">Внимание:</b> на бесплатном Render правки живут в памяти и слетают при следующем деплое/засыпании — после крупных правок пришлите файл мне в коммит.</p>
-<label>Название фамы</label>
+<p class="h">Страница для старших фамы. Все правки сразу появляются на <a style="color:var(--accent)" href="/">главной доске</a>.</p>
+<label class="label">Название фамы</label>
 <input id="title" placeholder="Фама Ловатьер">
 <div class="grid2">
-  <div><label>Короткая подпись</label><input id="tagline" placeholder="Cosa Nostra. Семья превыше всего"></div>
-  <div><label>Пароль редактора</label><input id="pass" type="password" placeholder="FAMA_PASSWORD из настроек Render"></div>
+  <div><label class="label">Короткая подпись</label><input id="tagline" placeholder="A Family United"></div>
+  <div><label class="label">Пароль редактора</label><input id="pass" type="password" placeholder="FAMA_PASSWORD из настроек Render"></div>
 </div>
-<label>Описание фамы</label>
-<textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
+<label class="label">Описание фамы</label>
+<textarea id="description" rows="4" placeholder="История, принцип, вехи..."></textarea>
 <div class="panel">
-  <label>Участники</label>
+  <h3>Участники</h3>
+  <p class="sub">X и Y — позиция карточки на доске в процентах (X от 2 до 96, Y от 4 до 88). Поиграйте цифрами, пока карточки не лягут красиво.</p>
   <div id="members"></div>
-  <button class="ghost" id="add" type="button">+ Добавить участника</button>
+  <button class="ghost" id="addMember" type="button">+ Добавить участника</button>
+</div>
+<div class="panel">
+  <h3>Типы нитей</h3>
+  <p class="sub">Каждый тип — это цвет нити на доске: кровные, жена, братья, друзья, вражда... Можно добавить свои.</p>
+  <div id="types"></div>
+  <button class="ghost" id="addType" type="button">+ Добавить тип нити</button>
+</div>
+<div class="panel">
+  <h3>Связи</h3>
+  <p class="sub">Выберите двух участников и тип — между ними натянется нить выбранного цвета.</p>
+  <div id="rels"></div>
+  <button class="ghost" id="addRel" type="button">+ Добавить связь</button>
 </div>
 <button id="save" type="button">Сохранить</button>
 <div id="out"></div>
-<p class="h" style="margin-top:22px"><a style="color:var(--accent)" href="/">← На главную страницу фамы</a></p>
 </main>
 <script>__JS__</script>
 </body>
