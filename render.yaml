@@ -63,6 +63,19 @@ services:
         value: "main"
       - key: GITHUB_TOKEN
         sync: false
+      # Токен для авто-бэкапа доски: каждое сохранение коммитит data/fam.json в репозиторий.
+      # Fine-grained token, доступ Contents: Read and write только к этому репозиторию.
+      - key: FAMA_GITHUB_TOKEN
+        sync: false
+      # Discord-бот: /addme добавляет участника на доску. Токен бота из Developer Portal.
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      # ID сервера Discord, где работает /addme (чтобы команда не срабатывала на чужих серверах).
+      - key: FAMA_DISCORD_GUILD_ID
+        sync: false
+      # Необязательно: ID роли, без которой нельзя добавить карточку.
+      - key: FAMA_DISCORD_ROLE_ID
+        sync: false
       # Пароль страницы /fama/edit (древо фамы). С s y n c: false Render спросит значение при деплое.
       - key: FAMA_PASSWORD
         sync: false
