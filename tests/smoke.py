@@ -70,7 +70,8 @@ def main():
     check("no search input", 'id="searchInput"' not in page)
     check("roles legend", "Founder of the Haruka Arch family" in page and "Союзные семьи" in page)
     check("card roles", "👑 Founder" in page and "🌹 Arch" in page and "ROLE_FULL" in page)
-    check("generations button", 'id="btnGen"' in page)
+    check("no generation button", 'id="btnGen"' not in page)
+    check("haruka-arch title", "Харука-Арч" in page)
     check("og tags", "og:image" in page and "twitter:card" in page)
     check("favicon", 'rel="icon"' in page)
 
