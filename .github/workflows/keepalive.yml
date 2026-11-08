@@ -1,13 +1,13 @@
 name: Keep-alive ping
 
-# Пингует free-инстанс Render каждые 5 минут, чтобы он не засыпал
-# после 15 минут без трафика. Для публичного репозитория минуты Actions бесплатны.
-# Адрес берётся из файла PING_URL.txt в корне репозитория —
-# его удобно менять через панель настроек сервера (/panel).
+# Пингует free-сервис Render каждые 5 минут, чтобы он не засыпал после 15 минут тишины.
+# Адрес берётся из PING_URL.txt в репозитории — его можно сменить через /panel.
+# Если сайт не отвечает — сообщение в Discord через секрет DISCORD_WEBHOOK.
+
 on:
   schedule:
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}   # кнопка ручного запуска в Actions
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -23,6 +23,24 @@ jobs:
           URL=$(curl -s -m 15 "https://raw.githubusercontent.com/${GH_REPO}/${{ github.ref_name }}/PING_URL.txt" | tr -d '[:space:]')
           if [ -z "$URL" ]; then URL="https://figura-unchained-backend.onrender.com/api/version"; fi
           echo "Pinging: $URL"
-          # || true — не роняем воркфлоу, если Render перезапускается или отвечает 503
           code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL" || true)
           echo "HTTP status: ${code:-000}"
+          echo "PING_URL=$URL" >> "$GITHUB_ENV"
+          echo "PING_CODE=${code:-000}" >> "$GITHUB_ENV"
+
+      - name: Notify Discord if down
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          case "$PING_CODE" in
+            2*) echo "Сайт отвечает (HTTP $PING_CODE) — всё хорошо"; exit 0 ;;
+          esac
+          export TEXT="⚠️ Сайт фамы не отвечает (HTTP ${PING_CODE}). Проверь Render: ${PING_URL}"
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "$TEXT"
+            echo "DISCORD_WEBHOOK не задан — уведомление не отправлено"
+            exit 1
+          fi
+          python3 -c 'import json,os; print(json.dumps({"content": os.environ["TEXT"]}))' > payload.json
+          curl -s -m 20 -H "Content-Type: application/json" --data @payload.json "$DISCORD_WEBHOOK" || true
+          exit 1
