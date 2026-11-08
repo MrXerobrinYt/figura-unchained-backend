@@ -1798,6 +1798,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1810,6 +1811,15 @@ PANEL_TOKEN_RE = re.compile(r'^(ghp_|github_pat_)?[A-Za-z0-9_]{20,180}$')
 PANEL_URL_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
 
 settings_state = {}
+FAMA_PASSWORD_HASH = os.environ.get("FAMA_PASSWORD_HASH", "").strip()
+FAMA_SETTINGS_KEYS = (
+    "host_display",
+    "fama_password",
+    "fama_password_hash",
+    "ping_url",
+    "ping_repo",
+    "server_name",
+)
 
 def load_settings_state():
     global settings_state
@@ -1820,6 +1830,7 @@ def load_settings_state():
             settings_state = {
                 "host_display": fam_clean_text(data.get("host_display") or "", 253),
                 "fama_password": fam_clean_text(data.get("fama_password") or "", 128),
+                "fama_password_hash": fam_clean_text(data.get("fama_password_hash") or "", 200),
                 "ping_url": fam_clean_text(data.get("ping_url") or "", 253),
                 "ping_repo": fam_clean_text(data.get("ping_repo") or "", 120),
                 "server_name": fam_clean_text(data.get("server_name") or "", 40),
@@ -1827,15 +1838,37 @@ def load_settings_state():
             return
     except (OSError, ValueError):
         pass
-    settings_state = {"host_display": "", "fama_password": "", "ping_url": "", "ping_repo": "", "server_name": ""}
+    settings_state = {k: "" for k in FAMA_SETTINGS_KEYS}
 
 def save_settings_state():
     os.makedirs(os.path.dirname(FAMA_SETTINGS_PATH), exist_ok=True)
-    payload = {k: settings_state.get(k) or "" for k in ("host_display", "fama_password", "ping_url", "ping_repo", "server_name")}
+    payload = {k: settings_state.get(k) or "" for k in FAMA_SETTINGS_KEYS}
     save_secure_file(FAMA_SETTINGS_PATH, json.dumps(payload, ensure_ascii=False, indent=2))
 
 def fama_effective_password():
+    """Открытый пароль (для совместимости с FAMA_PASSWORD и старым settings.json)."""
     return settings_state.get("fama_password") or FAMA_PASSWORD
+
+def fama_password_hash_value():
+    return (settings_state.get("fama_password_hash") or FAMA_PASSWORD_HASH or "").strip()
+
+def fama_password_configured():
+    return bool(fama_password_hash_value() or fama_effective_password())
+
+def fama_check_password(password):
+    if not isinstance(password, str):
+        return False
+    pw_hash = fama_password_hash_value()
+    if pw_hash.startswith("$2"):
+        try:
+            # bcrypt учитывает только первые 72 байта — обрезаем, чтобы не падать на длинных паролях
+            return bcrypt.checkpw(password.encode("utf-8")[:72], pw_hash.encode("ascii"))
+        except (ValueError, TypeError):
+            return False
+    expected = fama_effective_password()
+    if not expected:
+        return False
+    return secrets.compare_digest(password, expected)
 
 def fama_server_name():
     return settings_state.get("server_name") or "Норт"
@@ -2429,7 +2462,7 @@ function openProfile(name){
 btnSavePos.addEventListener('click', function(){
   var pass = null;
   try { pass = localStorage.getItem('famaPass'); } catch(err) {}
-  if(!pass){ pass = prompt('Пароль редактора (FAMA_PASSWORD):'); if(pass === null) return; }
+  if(!pass){ pass = prompt('Пароль редактора:'); if(pass === null) return; }
   btnSavePos.textContent = 'Сохранение...';
   var data = {
     title: fam.title, tagline: fam.tagline, description: fam.description,
@@ -2786,7 +2819,7 @@ async def handle_fama_data(request):
     return web.json_response(fam_state)
 
 async def handle_fama_save(request):
-    if not FAMA_PASSWORD and not settings_state.get("fama_password"):
+    if not fama_password_configured():
         return web.json_response({"error": "Editor disabled: set FAMA_PASSWORD in .env or use panel"}, status=503)
     ip = request['real_ip']
     blocked = too_many_attempts(ip)
@@ -2799,7 +2832,7 @@ async def handle_fama_save(request):
     if not isinstance(body, dict):
         return web.json_response({"error": "Invalid data"}, status=400)
     password = body.get("password")
-    if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
+    if not fama_check_password(password):
         note_login_failure(ip)
         log_info(f"[FAMA] save REJECT ip={ip} reason=wrong-password")
         return web.json_response({"error": "Wrong password"}, status=403)
@@ -3223,7 +3256,7 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
 <input id="title" placeholder="Фама Ловатьер">
 <div class="grid2">
   <div><label class="label">Короткая подпись</label><input id="tagline" placeholder="A Family United"></div>
-  <div><label class="label">Пароль редактора</label><input id="pass" type="password" placeholder="FAMA_PASSWORD из настроек Render"></div>
+  <div><label class="label">Пароль редактора</label><input id="pass" type="password" placeholder="пароль редактора"></div>
 </div>
 <label class="label">Описание фамы</label>
 <textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
@@ -3580,8 +3613,8 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 """
 
 async def handle_panel(request):
-    if not fama_effective_password():
-        return web.Response(status=503, text="Panel disabled: set FAMA_PASSWORD or open /panel after setting a password in .env")
+    if not fama_password_configured():
+        return web.Response(status=503, text="Panel disabled: set FAMA_PASSWORD or add a password hash to data/settings.json")
     if fama_github_token():
         backup_info = f"Включён ✓ Репозиторий: {FAMA_GITHUB_REPO}"
         if fam_backup_state.get("last_ok"):
@@ -3596,7 +3629,7 @@ async def handle_panel(request):
             .replace('__DEFAULT_REPO__', json.dumps(PANEL_DEFAULT_REPO))
             .replace('__PING_URL__', json.dumps(settings_state.get('ping_url') or ''))
             .replace('__HOST_DISPLAY__', json.dumps(settings_state.get('host_display') or ''))
-            .replace('__HAS_PASS__', json.dumps(bool(fama_effective_password())))
+            .replace('__HAS_PASS__', json.dumps(fama_password_configured()))
             .replace('__SERVER_NAME__', json.dumps(fama_server_name(), ensure_ascii=False))
             .replace('__BACKUP_INFO__', json.dumps(backup_info, ensure_ascii=False)))
     return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
@@ -3618,7 +3651,7 @@ async def panel_check(request, body):
     if not isinstance(body, dict):
         return web.json_response({"error": "Invalid data"}, status=400)
     password = body.get("password")
-    if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
+    if not fama_check_password(password):
         note_login_failure(ip)
         return panel_unauthorized(ip, "wrong-password")
     note_login_success(ip)
@@ -3667,7 +3700,10 @@ async def handle_panel_password(request):
     new_password = fam_clean_text(body.get("new_password") or "", 128)
     if len(new_password) < 8:
         return web.json_response({"error": "Password must be at least 8 characters"}, status=400)
-    settings_state["fama_password"] = new_password
+    settings_state["fama_password_hash"] = bcrypt.hashpw(
+        new_password.encode("utf-8")[:72], bcrypt.gensalt(rounds=12)
+    ).decode("ascii")
+    settings_state["fama_password"] = ""
     save_settings_state()
     log_info(f"[PANEL] password changed ip={request['real_ip']}")
     return web.json_response({"status": "success"})
@@ -3886,8 +3922,8 @@ async def handle_status(request):
     n_members = len(fam_state.get("members") or [])
     n_rels = len(fam_state.get("relations") or [])
     rows.append(status_row(True, "Доска фамы", f"участников: {n_members} · связей: {n_rels} · обновлено: {fam_state.get('updated') or '—'}"))
-    has_pass = bool(fama_effective_password())
-    rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "FAMA_PASSWORD не задан — редактор выключен"))
+    has_pass = fama_password_configured()
+    rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "пароль не задан — редактор выключен"))
     host_d = settings_state.get("host_display") or ""
     rows.append(status_row(True, "Адрес на доске", host_d if host_d else "автоматический (из браузера)"))
     rows.append(status_row(True, "Сервер фамы", fama_server_name()))
