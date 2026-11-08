@@ -1,0 +1,77 @@
+name: Smoke test
+
+on:
+  push:
+    paths-ignore:
+      - "data/**"
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start server
+        env:
+          PORT: "8099"
+          IP: "127.0.0.1"
+          DEBUG: "false"
+          REQUIRE_AUTH: "false"
+          AVATAR_DIR: "data/avatars"
+          MAX_PING_BPS: "1000000"
+          MAX_PING_SIZE: "8000"
+          MAX_AVATAR_SIZE: "256000"
+          MAX_AVATAR_UNPACKED_SIZE: "16777216"
+          RATE_LIMIT_REQUESTS: "1000"
+          RATE_LIMIT_WINDOW: "60"
+          RATE_LIMIT_CLEANUP_INTERVAL: "3600"
+          LOGIN_RATE_LIMIT_REQUESTS: "1000"
+          LOGIN_RATE_LIMIT_WINDOW: "60"
+          WS_MAX_CONNECTIONS_PER_IP: "5"
+          WS_MAX_MESSAGES_PER_SEC: "50"
+          WS_MAX_SUBS_PER_CLIENT: "256"
+          TRUSTED_PROXIES: "127.0.0.1"
+          CUSTOM_REAL_IP_HEADER: ""
+          MIN_ADDON_VERSION: "1.9.3"
+          ASSETS_UPDATE_INTERVAL_HOURS: "0"
+          ASSETS_RATE_LIMIT_REQUESTS: "1000"
+          ASSETS_RATE_LIMIT_WINDOW: "60"
+          MAX_PRIDE_BADGE_ID: "63"
+          FAMA_PASSWORD: "smoke-test-password"
+        run: |
+          mkdir -p data
+          cp fam.json data/fam.json || true
+          python server.py > server.log 2>&1 &
+          echo $! > server.pid
+          sleep 2
+
+      - name: Run smoke test
+        env:
+          PORT: "8099"
+          FAMA_PASSWORD: "smoke-test-password"
+        run: python tests/smoke.py
+
+      - name: Show server log on failure
+        if: failure()
+        run: tail -n 120 server.log
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+          fi
