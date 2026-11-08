@@ -18,7 +18,14 @@ __pycache__/
 # Runtime and Local Files
 # ========================
 .env
-data/
+# Данные фамы (эфемерны на Render, стартовые — из корневого fam.json)
+data/fam.json
+data/avatars/
+data/users.db
+data/server.log
+data/*.session
+data/*.tmp
+# settings.json коммитится — в нём хранится bcrypt-хеш пароля редактора (без Render-доступа)
 *.log
 .admin_session
 .admin_command*.json
