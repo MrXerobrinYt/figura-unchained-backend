@@ -22,6 +22,8 @@ import shutil
 import tempfile
 import zipfile
 import base64
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fam_bot
 from urllib.parse import unquote_plus
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, timezone
@@ -877,16 +879,37 @@ def fam_slug(label, existing):
         n += 1
     return slug
 
+def fam_member_uid(name):
+    digest = hashlib.sha256(("fama:" + name).encode("utf-8")).hexdigest()
+    return str(int(digest, 16) % (10 ** 16)).zfill(16)
+
+def fam_member_number(value, limit):
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return 0
+    if value < 0 or value > limit:
+        return 0
+    return value
+
 def fam_clean_member(raw):
     if not isinstance(raw, dict):
         raise ValueError("member must be an object")
     name = re.sub(r"\s+", " ", fam_clean_text(raw.get("name"), 48))
     if not name:
         raise ValueError("every member needs a name")
+    raw_id = fam_clean_text(raw.get("id"), 20)
+    member_id = raw_id if re.match(r"^[0-9]{8,20}$", raw_id or "") else fam_member_uid(name)
+    birth = fam_member_number(raw.get("birth"), 2100)
+    if birth and birth < 1900:
+        birth = 0
     return {
+        "id": member_id,
         "name": name,
         "role": fam_clean_text(raw.get("role"), 64),
         "note": fam_clean_text(raw.get("note"), 500),
+        "birth": birth or "",
+        "generation": fam_member_number(raw.get("generation"), 9),
         "x": fam_clamp_pos(raw.get("x"), 2, 96, round(10 + random.random() * 78, 1)),
         "y": fam_clamp_pos(raw.get("y"), 4, 88, round(8 + random.random() * 74, 1)),
     }
@@ -900,6 +923,11 @@ def fam_sanitize(data):
     if len(members_raw) > 200:
         raise ValueError("too many members (max 200)")
     members = [fam_clean_member(m) for m in members_raw]
+    seen_ids = set()
+    for m in members:
+        if m["id"] in seen_ids:
+            m["id"] = fam_member_uid(m["name"])
+        seen_ids.add(m["id"])
     names = {m["name"] for m in members}
 
     types = []
@@ -947,6 +975,7 @@ def fam_sanitize(data):
         "threads": types,
         "members": members,
         "relations": relations,
+        "updated": fam_clean_text(data.get("updated"), 32),
     }
 
 def load_fam_state():
@@ -1762,6 +1791,13 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1786,21 +1822,246 @@ def load_settings_state():
                 "fama_password": fam_clean_text(data.get("fama_password") or "", 128),
                 "ping_url": fam_clean_text(data.get("ping_url") or "", 253),
                 "ping_repo": fam_clean_text(data.get("ping_repo") or "", 120),
+                "server_name": fam_clean_text(data.get("server_name") or "", 40),
             }
             return
     except (OSError, ValueError):
         pass
-    settings_state = {"host_display": "", "fama_password": "", "ping_url": "", "ping_repo": ""}
+    settings_state = {"host_display": "", "fama_password": "", "ping_url": "", "ping_repo": "", "server_name": ""}
 
 def save_settings_state():
     os.makedirs(os.path.dirname(FAMA_SETTINGS_PATH), exist_ok=True)
-    payload = {k: settings_state.get(k) or "" for k in ("host_display", "fama_password", "ping_url", "ping_repo")}
+    payload = {k: settings_state.get(k) or "" for k in ("host_display", "fama_password", "ping_url", "ping_repo", "server_name")}
     save_secure_file(FAMA_SETTINGS_PATH, json.dumps(payload, ensure_ascii=False, indent=2))
 
 def fama_effective_password():
     return settings_state.get("fama_password") or FAMA_PASSWORD
 
+def fama_server_name():
+    return settings_state.get("server_name") or "Норт"
+
+# -------- роли фамы (единый список для карточек, редактора и Discord-бота) --------
+FAMA_ROLES = [
+    {"id": "founder", "label": "👑 Founder", "group": "Основной состав",
+     "full": "Founder of the Haruka Arch family — основательница семьи Arch"},
+    {"id": "deputy", "label": "👑 Deputy Founder", "group": "Основной состав",
+     "full": "Deputy Founder — заместитель основательницы семьи"},
+    {"id": "husband", "label": "💍 Муж основательницы", "group": "Основной состав",
+     "full": "Муж основательницы семьи"},
+    {"id": "haruka_arch", "label": "🌹 Haruka Arch", "group": "Основной состав",
+     "full": "Участник семьи, выше обычных Arch"},
+    {"id": "arch", "label": "🌹 Arch", "group": "Основной состав",
+     "full": "Участник семьи"},
+    {"id": "blade", "label": "🤝 Blade", "group": "Союзные семьи",
+     "full": "Союзная семья Blade — оставлена как память о существовании Блэйдов"},
+    {"id": "pharrell", "label": "🤝 Pharrell", "group": "Союзные семьи",
+     "full": "Союзная семья Pharrell"},
+]
+
+def fama_role_full_map():
+    return {r["label"]: r["full"] for r in FAMA_ROLES}
+
+def fama_roles_html():
+    groups = []
+    seen = []
+    for role in FAMA_ROLES:
+        if role["group"] not in seen:
+            seen.append(role["group"])
+    parts = ['<div class="roles">']
+    for group in seen:
+        parts.append(f'<h4>{html.escape(group)}</h4><ul>')
+        for role in FAMA_ROLES:
+            if role["group"] != group:
+                continue
+            parts.append(
+                f'<li><b>{html.escape(role["label"])}</b>'
+                f'<span>{html.escape(role["full"])}</span></li>'
+            )
+        parts.append('</ul>')
+    parts.append('</div>')
+    return "".join(parts)
+
+def fama_roles_options():
+    return "".join(
+        f'<option value="{html.escape(r["label"])}"></option>' for r in FAMA_ROLES
+    )
+
+def fama_public_url():
+    return (
+        os.environ.get("FAMA_PUBLIC_URL", "").strip()
+        or os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+        or "https://figura-unchained-backend.onrender.com"
+    ).rstrip("/")
+
+fama_write_lock = asyncio.Lock()
+
+async def fama_add_member(name, role, note="", discord_id=""):
+    """Добавляет или обновляет участника (используется Discord-ботом)."""
+    name = re.sub(r"\s+", " ", fam_clean_text(name, 48))
+    if not name:
+        return False, "Не указан ник.", ""
+    role = fam_clean_text(role, 64)
+    note = fam_clean_text(note, 500)
+    async with fama_write_lock:
+        members = fam_state.get("members") or []
+        existing = next(
+            (m for m in members if (m.get("name") or "").lower() == name.lower()),
+            None,
+        )
+        if existing:
+            return False, f"Ник «{name}» уже есть на доске — выбери другой ник.", ""
+        if len(members) >= 200:
+            return False, "На доске уже 200 участников — больше нельзя.", ""
+        member = {
+            "id": fam_member_uid(name),
+            "name": name,
+            "role": role,
+            "note": note,
+            "birth": "",
+            "generation": 0,
+            "x": round(10 + random.random() * 76, 1),
+            "y": round(8 + random.random() * 72, 1),
+        }
+        members.append(member)
+        created = True
+        data = fam_sanitize(fam_state)
+        data["updated"] = time.strftime("%Y-%m-%d %H:%M")
+        fam_state.clear()
+        fam_state.update(data)
+        saved = next(
+            (m for m in fam_state["members"] if (m.get("name") or "").lower() == name.lower()),
+            None,
+        )
+        member_id = (saved or {}).get("id") or ""
+    try:
+        await asyncio.to_thread(
+            save_secure_file,
+            FAMA_DATA_PATH,
+            json.dumps(fam_state, ensure_ascii=False, indent=2),
+        )
+    except OSError as e:
+        log_warn(f"[FAMA] disk save failed (bot): {e!r}")
+    schedule_fama_backup()
+    safe_name = name.encode("ascii", "replace").decode("ascii")
+    safe_role = role.encode("ascii", "replace").decode("ascii")
+    log_info(
+        f"[BOT] {'added' if created else 'updated'} member={safe_name!r} role={safe_role!r} "
+        f"discord={discord_id or '-'}"
+    )
+    return True, ("добавлен на доску" if created else "карточка обновлена"), member_id
+
 load_settings_state()
+
+# -------- авто-бэкап фамы в GitHub --------
+FAMA_GITHUB_TOKEN = os.environ.get("FAMA_GITHUB_TOKEN", "").strip()
+FAMA_GITHUB_REPO = os.environ.get("FAMA_GITHUB_REPO", "").strip() or PANEL_DEFAULT_REPO
+fam_backup_state = {"last_ok": "", "last_error": ""}
+
+def fama_github_token():
+    return FAMA_GITHUB_TOKEN or os.environ.get("GITHUB_TOKEN", "").strip()
+
+async def fama_github_backup():
+    token = fama_github_token()
+    if not token:
+        fam_backup_state["last_error"] = "токен не задан"
+        return False
+    try:
+        with open(FAMA_DATA_PATH, encoding="utf-8") as f:
+            content = f.read()
+    except OSError as e:
+        fam_backup_state["last_error"] = f"нет файла данных: {e}"
+        return False
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "figura-unchained-autosave",
+        "Content-Type": "application/json",
+    }
+    api = f"https://api.github.com/repos/{FAMA_GITHUB_REPO}/contents/data/fam.json"
+    try:
+        async with ClientSession() as session:
+            sha = None
+            async with session.get(api, headers=headers, timeout=ClientTimeout(total=20)) as resp:
+                if resp.status == 200:
+                    sha = (await resp.json()).get("sha")
+                elif resp.status != 404:
+                    text = await resp.text()
+                    fam_backup_state["last_error"] = f"GitHub GET {resp.status}: {text[:100]}"
+                    log_warn(f"[FAMA] backup GET failed status={resp.status}")
+                    return False
+            payload = {
+                "message": f"fam: autosave {time.strftime('%Y-%m-%d %H:%M')}",
+                "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+            }
+            if sha:
+                payload["sha"] = sha
+            async with session.put(api, headers=headers, json=payload, timeout=ClientTimeout(total=20)) as resp:
+                if resp.status not in (200, 201):
+                    text = await resp.text()
+                    fam_backup_state["last_error"] = f"GitHub PUT {resp.status}: {text[:100]}"
+                    log_warn(f"[FAMA] backup PUT failed status={resp.status}")
+                    return False
+    except Exception as e:
+        fam_backup_state["last_error"] = repr(e)
+        log_warn(f"[FAMA] backup error: {e!r}")
+        return False
+    fam_backup_state["last_ok"] = time.strftime("%Y-%m-%d %H:%M")
+    fam_backup_state["last_error"] = ""
+    log_info(f"[FAMA] backup OK repo={FAMA_GITHUB_REPO}")
+    return True
+
+def schedule_fama_backup():
+    if not fama_github_token():
+        return
+    try:
+        asyncio.get_running_loop().create_task(fama_github_backup())
+    except RuntimeError:
+        pass
+
+# -------- защита от перебора пароля --------
+LOGIN_FAIL_LIMIT = 5
+LOGIN_FAIL_WINDOW = 15 * 60
+LOGIN_BLOCK_SECONDS = 15 * 60
+login_guard = {}
+
+def login_block_remaining(ip):
+    entry = login_guard.get(ip)
+    if not entry:
+        return 0
+    now = time.time()
+    if entry.get("blocked_until", 0) > now:
+        return int(entry["blocked_until"] - now)
+    if now - entry.get("first", 0) > LOGIN_FAIL_WINDOW:
+        login_guard.pop(ip, None)
+    return 0
+
+def note_login_failure(ip):
+    now = time.time()
+    entry = login_guard.get(ip)
+    if not entry or now - entry.get("first", 0) > LOGIN_FAIL_WINDOW:
+        entry = {"fails": 0, "first": now, "blocked_until": 0}
+    entry["fails"] += 1
+    if entry["fails"] >= LOGIN_FAIL_LIMIT:
+        entry["blocked_until"] = now + LOGIN_BLOCK_SECONDS
+        entry["fails"] = 0
+        entry["first"] = now
+        log_warn(f"[GUARD] ip={ip} blocked for {LOGIN_BLOCK_SECONDS}s after {LOGIN_FAIL_LIMIT} wrong passwords")
+    login_guard[ip] = entry
+
+def note_login_success(ip):
+    login_guard.pop(ip, None)
+
+def too_many_attempts(ip):
+    remaining = login_block_remaining(ip)
+    if remaining <= 0:
+        return None
+    log_info(f"[GUARD] REJECT ip={ip} reason=bruteforce wait={remaining}s")
+    minutes = max(1, (remaining + 59) // 60)
+    return web.json_response(
+        {"error": f"Слишком много попыток ввода пароля. Подождите {minutes} мин."},
+        status=429,
+        headers={"Retry-After": str(remaining)},
+    )
 
 
 FAMA_PAGE_STYLES = """
@@ -1823,6 +2084,7 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .profile .ava-tile{width:52px;height:52px;line-height:52px;font-size:24px;flex:0 0 auto}
 .profile h3{margin:0;color:var(--gold);font-size:19px;word-break:break-word}
 .profile .role{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.profile .role-full{display:block;color:var(--muted);font-size:10.5px;line-height:1.4;margin-top:2px;text-transform:none;letter-spacing:0}
 .profile .note{white-space:pre-line;font-size:13.5px;line-height:1.6;color:var(--fg);margin:10px 0}
 .profile .rel{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-top:1px dashed var(--line);color:var(--fg)}
 .profile .rel .sw{width:22px;height:3px;border-radius:2px;flex:0 0 auto}
@@ -1847,6 +2109,13 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .btns{top:14px;right:14px;display:flex;gap:8px}
 .panel-box{top:60px;right:14px;width:min(380px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .panel-box .desc{white-space:pre-line;line-height:1.62;font-size:14px;color:var(--fg)}
+.panel-box .roles{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px;max-height:34vh;overflow:auto}
+.panel-box .roles h4{margin:10px 0 6px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.panel-box .roles h4:first-child{margin-top:0}
+.panel-box .roles ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.panel-box .roles li{font-size:13px;line-height:1.35;color:var(--fg)}
+.panel-box .roles li b{color:var(--gold);font-weight:600;display:block}
+.panel-box .roles li span{color:var(--muted);font-size:11.5px}
 .panel-box .meta{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7}
 .panel-box .meta a{color:var(--accent)}
 .panel-box .meta code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--fg)}
@@ -1866,11 +2135,61 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .hint code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg)}
 #btnSavePos{background:#2a3d2c;color:#8fd6a0;border-color:#3c5a40}
 #btnSavePos:hover{background:#35503a}
-@media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}}
+.photo .card-badge{position:absolute;top:4px;left:5px;background:rgba(63,36,16,.85);color:#f6e6c6;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 6px;letter-spacing:.06em;pointer-events:none}
+.photo .card-year{position:absolute;top:4px;right:5px;background:rgba(255,255,255,.55);color:#4a3418;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 5px;pointer-events:none}
+.profile .meta-line{font-size:12px;color:var(--muted);margin:3px 0 0}
+.profile .linkrow{display:flex;gap:6px;margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.profile .linkrow input{flex:1;min-width:0;background:#14161f;border:1px solid var(--line);border-radius:8px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:7px 9px}
+.profile .linkrow button{background:var(--gold);color:#12131a;border:0;border-radius:8px;padding:0 12px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+/* ---------- стартовое окно ---------- */
+#gate{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(36,20,8,.74);backdrop-filter:blur(6px);font-family:system-ui,sans-serif}
+#gate[hidden]{display:none}
+.gate-card{width:min(540px,96vw);background:linear-gradient(180deg,#f5ebd4,#e6d5b0);color:#2c210e;border-radius:16px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.55)}
+.gate-step{font-size:11px;color:#7c5a32;letter-spacing:.1em;text-transform:uppercase}
+.gate-card h2{margin:6px 0 4px;font-size:24px;letter-spacing:.03em;color:#3f2410}
+.gate-card p{margin:0 0 16px;color:#6b4a26;font-size:13.5px;line-height:1.5}
+.gate-choices{display:grid;gap:9px}
+.gate-opt{display:flex;gap:13px;align-items:center;border:2px solid rgba(90,60,25,.22);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.35);cursor:pointer;font:inherit;color:inherit;text-align:left}
+.gate-opt:hover{border-color:#8a5f2a;background:rgba(255,255,255,.62)}
+.gate-opt.on{border-color:#7a4f1e;background:#fff9ea;box-shadow:0 0 0 3px rgba(201,151,63,.25)}
+.gate-opt .ico{font-size:26px;flex:0 0 auto;width:34px;text-align:center}
+.gate-opt b{display:block;font-size:15px;color:#3f2410}
+.gate-opt span{display:block;font-size:12px;color:#6b4a26;margin-top:1px}
+.gate-next{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gate-next button{background:#7a4f1e;color:#fff4dc;border:0;border-radius:10px;padding:11px 22px;font-size:14.5px;cursor:pointer}
+.gate-next button:disabled{opacity:.4;cursor:default}
+.gate-back{background:none !important;border:0;color:#7c5a32 !important;cursor:pointer;font-size:12.5px;text-decoration:underline;padding:0 !important}
+/* ---------- фильтры ---------- */
+.searchbar{top:62px;left:50%;transform:translateX(-50%);width:min(520px,86vw);display:flex;flex-direction:column;gap:7px;z-index:5}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted);font:11.5px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
+.chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.chip.on{color:#12131a;background:var(--gold);border-color:var(--gold);font-weight:600}
+.photo.muted{opacity:.22;filter:grayscale(.55)}
+#threads path.muted,#threads circle.muted{opacity:.05 !important}
+/* ---------- мобильный режим ---------- */
+html.m-mode .title h1{font-size:22px}
+html.m-mode .title{max-width:92vw}
+html.m-mode .photo{width:124px}
+html.m-mode .photo b{font-size:11px}
+html.m-mode .photo .note{font-size:9.5px;max-height:5.6em}
+html.m-mode .btns{top:8px;right:8px;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:64vw}
+html.m-mode .btns button{padding:7px 10px;font-size:11.5px}
+html.m-mode .legend{display:none}
+html.m-mode .hint{display:none}
+html.m-mode .searchbar{top:66px;width:calc(100vw - 16px)}
+html.m-mode .members,html.m-mode .profile,html.m-mode .panel-box{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:56vh;border-radius:14px}
+html.m-mode .chips{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+@media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}.searchbar{top:60px;width:calc(100vw - 16px)}}
 """
 
 FAMA_PAGE_JS = """
 var fam = __FAMA_DATA__;
+var SERVER_NAME = __SERVER_NAME__;
+var ROLE_FULL = __ROLES_JSON__;
+var ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX'];
+var genMode = false;
+var genSavedPositions = null;
 
 function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
 
@@ -1918,9 +2237,16 @@ function makeAvatar(name){
   d.style.setProperty('--tape', (((i % 3) - 1) * 1.6) + 'deg');
   if(m.name){ d.appendChild(makeAvatar(m.name)); }
   d.appendChild(el('b', null, m.name));
-  if(m.role){ d.appendChild(el('span', 'role', m.role)); }
+  if(m.role){
+    var roleEl = el('span', 'role', m.role);
+    if(ROLE_FULL[m.role]) roleEl.title = ROLE_FULL[m.role];
+    d.appendChild(roleEl);
+  }
   if(m.note){ d.appendChild(el('p', 'note', m.note)); }
+  if(m.generation){ d.appendChild(el('span', 'card-badge', ROMAN[m.generation] || ('G' + m.generation))); }
+  if(m.birth){ d.appendChild(el('span', 'card-year', String(m.birth))); }
   d.dataset.name = m.name;
+  if(m.id){ d.dataset.id = m.id; }
   board.appendChild(d);
   cardEls[m.name] = d;
 });
@@ -1950,6 +2276,7 @@ function drawThreads(){
     glow.setAttribute('stroke-width', 7);
     glow.setAttribute('data-a', rel.from);
     glow.setAttribute('data-b', rel.to);
+    glow.setAttribute('data-type', rel.type);
     svg.appendChild(glow);
     var main = document.createElementNS(SVGNS, 'path');
     main.setAttribute('d', dPath);
@@ -1958,6 +2285,7 @@ function drawThreads(){
     main.setAttribute('stroke-width', 2.2);
     main.setAttribute('data-a', rel.from);
     main.setAttribute('data-b', rel.to);
+    main.setAttribute('data-type', rel.type);
     svg.appendChild(main);
     [ [ax, ay], [bx, by] ].forEach(function(pt){
       var knot = document.createElementNS(SVGNS, 'circle');
@@ -1968,6 +2296,7 @@ function drawThreads(){
       knot.setAttribute('fill', color);
       knot.setAttribute('data-a', rel.from);
       knot.setAttribute('data-b', rel.to);
+      knot.setAttribute('data-type', rel.type);
       svg.appendChild(knot);
     });
   });
@@ -1989,6 +2318,7 @@ function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
 board.addEventListener('pointerdown', function(e){
   var card = e.target.closest ? e.target.closest('.photo') : null;
   if(!card || !card.dataset.name) return;
+  if(genMode) return;
   if(e.pointerType === 'mouse' && e.button !== 0) return;
   e.preventDefault();
   var br = board.getBoundingClientRect();
@@ -2054,11 +2384,16 @@ function openProfile(name){
   var ht = el('div');
   ht.appendChild(el('h3', null, name));
   if(m.role) ht.appendChild(el('span', 'role', m.role));
+  if(m.role && ROLE_FULL[m.role]) ht.appendChild(el('span', 'role-full', ROLE_FULL[m.role]));
   head.appendChild(ht);
   var close = el('button', 'close', '×'); close.type = 'button';
   close.addEventListener('click', function(){ profilePanel.hidden = true; });
   head.appendChild(close);
   profilePanel.appendChild(head);
+  var meta = [];
+  if(m.generation){ meta.push('поколение ' + (ROMAN[m.generation] || m.generation)); }
+  if(m.birth){ meta.push(m.birth + ' г.'); }
+  if(meta.length){ profilePanel.appendChild(el('div', 'meta-line', meta.join(' · '))); }
   if(m.note){ profilePanel.appendChild(el('p', 'note', m.note)); }
   var relsOf = (fam.relations || []).filter(function(r){ return r.from === name || r.to === name; });
   if(relsOf.length){
@@ -2069,11 +2404,25 @@ function openProfile(name){
       var sw = el('span', 'sw'); sw.style.background = (t && t.color) || '#c9973f';
       row.appendChild(sw);
       row.appendChild(document.createTextNode(((t && t.label) || r.type) + ': ' + other));
+      row.title = 'Открыть профиль: ' + other;
+      row.addEventListener('click', function(){ openProfile(other); });
       profilePanel.appendChild(row);
     });
   } else {
     profilePanel.appendChild(el('p', 'none', 'Связей пока нет.'));
   }
+  var link = location.origin + '/member/' + encodeURIComponent(m.id || name);
+  var linkRow = el('div', 'linkrow');
+  var inp = el('input'); inp.readOnly = true; inp.value = link; inp.title = link;
+  var copyBtn = el('button', null, 'Копировать'); copyBtn.type = 'button';
+  copyBtn.addEventListener('click', function(){
+    function done(){ copyBtn.textContent = 'Готово ✓'; setTimeout(function(){ copyBtn.textContent = 'Копировать'; }, 1500); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(link).then(done, function(){ inp.select(); });
+    } else { inp.select(); try { document.execCommand('copy'); done(); } catch(e) {} }
+  });
+  linkRow.appendChild(inp); linkRow.appendChild(copyBtn);
+  profilePanel.appendChild(linkRow);
   profilePanel.hidden = false;
 }
 
@@ -2138,6 +2487,198 @@ function toggle(which){
 }
 btnInfo.addEventListener('click', function(){ toggle('info'); });
 btnMembers.addEventListener('click', function(){ toggle('members'); });
+
+/* ---------- фильтры по типам связей ---------- */
+var filterChips = document.getElementById('filterChips');
+var activeFilter = '';
+function renderChips(){
+  filterChips.innerHTML = '';
+  (fam.threads || []).forEach(function(t){
+    var chip = el('button', 'chip' + (activeFilter === t.id ? ' on' : ''));
+    chip.type = 'button';
+    var dot = el('span', 'dot'); dot.style.background = t.color;
+    chip.appendChild(dot); chip.appendChild(document.createTextNode(t.label));
+    chip.addEventListener('click', function(){
+      activeFilter = (activeFilter === t.id) ? '' : t.id;
+      renderChips(); applyFilters();
+    });
+    filterChips.appendChild(chip);
+  });
+}
+function applyFilters(){
+  (fam.members || []).forEach(function(m){
+    var card = cardEls[m.name]; if(!card) return;
+    var matchT = true;
+    if(activeFilter){
+      matchT = (fam.relations || []).some(function(r){ return r.type === activeFilter && (r.from === m.name || r.to === m.name); });
+    }
+    card.classList.toggle('muted', !matchT);
+  });
+  var elems = svg.querySelectorAll('path[data-a], circle[data-a]');
+  Array.prototype.forEach.call(elems, function(p){
+    var match = !activeFilter || p.getAttribute('data-type') === activeFilter;
+    p.classList.toggle('muted', !match);
+  });
+}
+renderChips();
+applyFilters();
+
+/* ---------- режим поколений ---------- */
+var btnGen = document.getElementById('btnGen');
+function applyGenMode(on){
+  genMode = on;
+  btnGen.classList.toggle('on', on);
+  if(on){
+    genSavedPositions = {};
+    (fam.members || []).forEach(function(m){ genSavedPositions[m.name] = { x: m.x, y: m.y }; });
+    var groups = {};
+    (fam.members || []).forEach(function(m){
+      var g = m.generation || 0;
+      if(!groups[g]) groups[g] = [];
+      groups[g].push(m);
+    });
+    var keys = Object.keys(groups).map(Number).sort(function(a, b){ return a - b; });
+    keys.forEach(function(g, gi){
+      var row = groups[g];
+      var y = keys.length <= 1 ? 46 : 10 + gi * (76 / (keys.length - 1));
+      row.forEach(function(m, i){
+        var x = row.length <= 1 ? 50 : 6 + i * (88 / (row.length - 1));
+        var card = cardEls[m.name];
+        if(card){ card.style.left = x.toFixed(2) + '%'; card.style.top = y.toFixed(2) + '%'; }
+      });
+    });
+    btnSavePos.hidden = true; dirty = false;
+    drawThreads();
+  } else if(genSavedPositions){
+    (fam.members || []).forEach(function(m){
+      var p = genSavedPositions[m.name]; if(!p) return;
+      m.x = p.x; m.y = p.y;
+      var card = cardEls[m.name];
+      if(card){ card.style.left = m.x + '%'; card.style.top = m.y + '%'; }
+    });
+    genSavedPositions = null;
+    drawThreads();
+  }
+}
+if(btnGen){
+  btnGen.addEventListener('click', function(){ applyGenMode(!genMode); });
+}
+
+/* ---------- стартовый экран ---------- */
+var gate = document.getElementById('gate');
+var gateStepEl = document.getElementById('gateStep');
+var gateTitle = document.getElementById('gateTitle');
+var gateSub = document.getElementById('gateSub');
+var gateChoices = document.getElementById('gateChoices');
+var gateNextBtn = document.getElementById('gateNext');
+var gateBackBtn = document.getElementById('gateBack');
+var gateStep = 0;
+var gateMode = null;
+var gateServer = SERVER_NAME;
+var MODE_KEY = 'famaMode';
+var SERVER_KEY = 'famaServer';
+function readStore(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function writeStore(k, v){ try { localStorage.setItem(k, v); } catch(e) {} }
+function applyModeClass(mode){ document.documentElement.classList.toggle('m-mode', mode === 'mobile'); }
+function autoMode(){
+  try { return (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) ? 'mobile' : 'pc'; } catch(e){ return 'pc'; }
+}
+function renderGate(){
+  gateChoices.innerHTML = '';
+  if(gateStep === 0){
+    gateStepEl.textContent = 'Шаг 1 из 2';
+    gateTitle.textContent = 'Как смотришь?';
+    gateSub.textContent = 'Выбери версию сайта — её можно будет поменять в любой момент.';
+    var opts = [
+      { v: 'pc', ico: '🖥', t: 'ПК-версия', s: 'Полная доска, панели сбоку, удобно мышью' },
+      { v: 'mobile', ico: '📱', t: 'Мобильная версия', s: 'Компактные карточки, панели снизу, под палец' }
+    ];
+    opts.forEach(function(o){
+      var b = el('button', 'gate-opt' + (gateMode === o.v ? ' on' : ''));
+      b.type = 'button';
+      b.appendChild(el('span', 'ico', o.ico));
+      var tx = el('span');
+      tx.appendChild(el('b', null, o.t));
+      tx.appendChild(el('span', null, o.s));
+      b.appendChild(tx);
+      b.addEventListener('click', function(){ gateMode = o.v; renderGate(); });
+      gateChoices.appendChild(b);
+    });
+    gateNextBtn.textContent = 'Дальше';
+    gateNextBtn.disabled = !gateMode;
+    gateBackBtn.hidden = true;
+  } else {
+    gateStepEl.textContent = 'Шаг 2 из 2';
+    gateTitle.textContent = 'На каком сервере фама?';
+    gateSub.textContent = 'Пока доступен один сервер — «Норт». Другие появятся позже.';
+    var sb = el('button', 'gate-opt on'); sb.type = 'button';
+    sb.appendChild(el('span', 'ico', '⛏'));
+    var st = el('span');
+    st.appendChild(el('b', null, SERVER_NAME));
+    st.appendChild(el('span', null, 'Основной сервер фамы'));
+    sb.appendChild(st);
+    sb.addEventListener('click', function(){ gateServer = SERVER_NAME; renderGate(); });
+    gateChoices.appendChild(sb);
+    gateNextBtn.textContent = 'На доску';
+    gateNextBtn.disabled = false;
+    gateBackBtn.hidden = false;
+  }
+}
+function openGate(step){
+  gateStep = step || 0;
+  renderGate();
+  gate.hidden = false;
+}
+function closeGate(){
+  gate.hidden = true;
+  if(gateMode){ writeStore(MODE_KEY, gateMode); applyModeClass(gateMode); }
+  if(gateServer){ writeStore(SERVER_KEY, gateServer); }
+  var srvEl = document.getElementById('srvName');
+  if(srvEl){ srvEl.textContent = gateServer || SERVER_NAME; }
+}
+gateNextBtn.addEventListener('click', function(){
+  if(gateStep === 0){ gateStep = 1; renderGate(); return; }
+  closeGate();
+});
+gateBackBtn.addEventListener('click', function(){ gateStep = 0; renderGate(); });
+var gateChange = document.getElementById('gateChange');
+if(gateChange){
+  gateChange.addEventListener('click', function(e){
+    e.preventDefault();
+    gateMode = readStore(MODE_KEY) || autoMode();
+    gateServer = readStore(SERVER_KEY) || SERVER_NAME;
+    openGate(0);
+  });
+}
+
+/* глубокие ссылки на профиль: /?m=<id> или #member=Имя */
+function openDeepLink(){
+  var key = null;
+  try { key = new URLSearchParams(location.search).get('m'); } catch(e) {}
+  if(!key && location.hash.indexOf('member=') === 0){ key = decodeURIComponent(location.hash.slice(7)); }
+  if(!key){ return false; }
+  var found = null;
+  (fam.members || []).forEach(function(m){
+    if(found){ return; }
+    if(String(m.id) === key || m.name === key){ found = m; }
+  });
+  if(!found){ return false; }
+  openProfile(found.name);
+  return true;
+}
+
+(function initGate(){
+  var storedMode = readStore(MODE_KEY);
+  var storedServer = readStore(SERVER_KEY);
+  gateMode = storedMode || autoMode();
+  gateServer = storedServer || SERVER_NAME;
+  applyModeClass(gateMode);
+  var srvEl = document.getElementById('srvName');
+  if(srvEl){ srvEl.textContent = gateServer; }
+  if(openDeepLink()){ gate.hidden = true; return; }
+  if(storedMode && storedServer){ gate.hidden = true; return; }
+  openGate(storedMode ? 1 : 0);
+})();
 """
 
 FAMA_PAGE_TEMPLATE = """<!doctype html>
@@ -2161,19 +2702,39 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <body>
 <div id="board"><svg id="threads"></svg></div>
 
+<div id="gate" hidden>
+  <div class="gate-card">
+    <div class="gate-step" id="gateStep">Шаг 1 из 2</div>
+    <h2 id="gateTitle">Как смотришь?</h2>
+    <p id="gateSub"></p>
+    <div class="gate-choices" id="gateChoices"></div>
+    <div class="gate-next">
+      <button type="button" class="gate-back" id="gateBack" hidden>← назад</button>
+      <span></span>
+      <button type="button" id="gateNext">Дальше</button>
+    </div>
+  </div>
+</div>
+
 <div class="hud title">
 <h1 id="fam_title"></h1>
 <p class="tagline" id="tagline"></p>
 </div>
 
+<div class="hud searchbar">
+<div class="chips" id="filterChips"></div>
+</div>
+
 <div class="hud btns">
 <button id="btnSavePos" type="button" hidden>Сохранить позиции</button>
+<button id="btnGen" type="button">Поколения</button>
 <button id="btnMembers" type="button">Участники</button>
 <button id="btnInfo" type="button">О фаме</button>
 </div>
 
 <div class="hud panel-box" id="infoPanel" hidden>
 <div id="infoText"></div>
+__ROLES__
 <div class="meta" id="infoMeta"></div>
 <div class="meta">Наш адрес для Figura: <code>__HOST__</code><br><a href="/fama/edit">редактировать доску</a> · <a href="/info">что это за адрес?</a></div>
 </div>
@@ -2185,6 +2746,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <div class="hud legend" id="legend"></div>
 
 <div class="hud hint">
+Сервер фамы: <code id="srvName">Норт</code> · <a href="#" id="gateChange">сменить</a><br>
 Figura Cloud IP: <code>__HOST__</code><br>
 карточки можно перетаскивать и нажимать · <a href="/fama/edit">редактировать</a> · <a href="/status">статус</a>
 </div>
@@ -2194,7 +2756,7 @@ Figura Cloud IP: <code>__HOST__</code><br>
 </html>
 """
 
-FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://mc-heads.net; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+FAMA_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://mc-heads.net https://minotar.net; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 FAMA_HOST_RE = re.compile(r'^[A-Za-z0-9.\-]{1,253}(:[0-9]{1,5})?$')
 
@@ -2209,6 +2771,9 @@ async def handle_root(request):
             .replace('__STYLES__', FAMA_PAGE_STYLES)
             .replace('__JS__', FAMA_PAGE_JS)
             .replace('__FAMA_DATA__', fam_json_safe(fam_state))
+            .replace('__SERVER_NAME__', json.dumps(fama_server_name(), ensure_ascii=False))
+            .replace('__ROLES__', fama_roles_html())
+            .replace('__ROLES_JSON__', fam_json_safe(fama_role_full_map()))
             .replace('__HOST__', html.escape(host)))
     return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
         "Content-Security-Policy": FAMA_PAGE_CSP,
@@ -2224,6 +2789,9 @@ async def handle_fama_save(request):
     if not FAMA_PASSWORD and not settings_state.get("fama_password"):
         return web.json_response({"error": "Editor disabled: set FAMA_PASSWORD in .env or use panel"}, status=503)
     ip = request['real_ip']
+    blocked = too_many_attempts(ip)
+    if blocked:
+        return blocked
     try:
         body = await request.json()
     except Exception:
@@ -2232,19 +2800,23 @@ async def handle_fama_save(request):
         return web.json_response({"error": "Invalid data"}, status=400)
     password = body.get("password")
     if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
+        note_login_failure(ip)
         log_info(f"[FAMA] save REJECT ip={ip} reason=wrong-password")
         return web.json_response({"error": "Wrong password"}, status=403)
+    note_login_success(ip)
     try:
         data = fam_sanitize(body.get("data"))
     except ValueError as e:
         return web.json_response({"error": f"Invalid fam data: {e}"}, status=400)
     data["updated"] = time.strftime('%Y-%m-%d %H:%M')
-    fam_state.clear()
-    fam_state.update(data)
+    async with fama_write_lock:
+        fam_state.clear()
+        fam_state.update(data)
     try:
         await asyncio.to_thread(save_secure_file, FAMA_DATA_PATH, json.dumps(fam_state, ensure_ascii=False, indent=2))
     except OSError as e:
         log_warn(f"[FAMA] disk save failed: {e!r} (page still serves the new data from memory)")
+    schedule_fama_backup()
     log_info(f"[FAMA] save OK members={len(fam_state['members'])} relations={len(fam_state['relations'])} ip={ip}")
     return web.json_response({"status": "success"})
 
@@ -2258,7 +2830,7 @@ var T = document.getElementById('types');
 var pvBoard = document.getElementById('pvBoard');
 var pvSvg = document.getElementById('pvThreads');
 
-var members = (fam.members || []).map(function(m){ return { name: m.name || '', role: m.role || '', note: m.note || '', x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
+var members = (fam.members || []).map(function(m){ return { id: m.id || '', name: m.name || '', role: m.role || '', note: m.note || '', birth: (typeof m.birth === 'number' ? m.birth : ''), generation: (m.generation || 0), x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
 var types = (fam.threads || []).map(function(t){ return { id: t.id, label: t.label || '', color: t.color || '#c9973f' }; });
 var rels = (fam.relations || []).map(function(r){ return { from: r.from || '', to: r.to || '', type: r.type || '' }; });
 
@@ -2311,7 +2883,7 @@ document.getElementById('btnDiscard').addEventListener('click', function(){
 });
 
 function applyLoaded(f){
-  members = (f.members || []).map(function(m){ return { name: m.name || '', role: m.role || '', note: m.note || '', x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
+  members = (f.members || []).map(function(m){ return { id: m.id || '', name: m.name || '', role: m.role || '', note: m.note || '', birth: (typeof m.birth === 'number' ? m.birth : ''), generation: (m.generation || 0), x: (typeof m.x === 'number' ? m.x : 50), y: (typeof m.y === 'number' ? m.y : 50) }; });
   types = (f.threads || []).map(function(t){ return { id: t.id, label: t.label || '', color: t.color || '#c9973f' }; });
   rels = (f.relations || []).map(function(r){ return { from: r.from || '', to: r.to || '', type: r.type || '' }; });
   document.getElementById('title').value = f.title || '';
@@ -2423,7 +2995,7 @@ function memberRow(m){
   row.appendChild(del);
   var name = el('input'); name.placeholder = 'Имя в Minecraft (аватарка подтянется сама)'; name.value = m.name;
   bind(name, m, 'name');
-  var role = el('input'); role.placeholder = 'Роль'; role.value = m.role;
+  var role = el('input'); role.placeholder = 'Роль'; role.value = m.role; role.setAttribute('list', 'rolePresets');
   bind(role, m, 'role');
   row.appendChild(name); row.appendChild(role);
   var note = document.createElement('textarea'); note.className = 'span2'; note.rows = 2; note.placeholder = 'Заметка: кто такой, титул, биография...';
@@ -2435,7 +3007,18 @@ function memberRow(m){
   var ylab = el('div', 'pos'); ylab.appendChild(document.createTextNode('Y')); geo.appendChild(ylab);
   var y = el('input'); y.type = 'number'; y.min = '4'; y.max = '88'; y.step = '0.5'; y.value = m.y; bind(y, m, 'y', true);
   geo.appendChild(x); geo.appendChild(y);
+  var blab = el('div', 'pos'); blab.appendChild(document.createTextNode('Год')); geo.appendChild(blab);
+  var birth = el('input'); birth.type = 'number'; birth.min = '1900'; birth.max = '2100'; birth.placeholder = '1998'; birth.value = m.birth || '';
+  birth.addEventListener('input', function(){ m.birth = birth.value ? Number(birth.value) : ''; changed(); });
+  geo.appendChild(birth);
+  var glab = el('div', 'pos'); glab.appendChild(document.createTextNode('Пок.')); geo.appendChild(glab);
+  var gen = el('input'); gen.type = 'number'; gen.min = '1'; gen.max = '9'; gen.placeholder = '1'; gen.value = m.generation || '';
+  gen.addEventListener('input', function(){ m.generation = gen.value ? Number(gen.value) : 0; changed(); });
+  geo.appendChild(gen);
   row.appendChild(geo);
+  var idline = el('div', 'mid span2');
+  idline.textContent = m.id ? ('ID профиля: ' + m.id + ' · /member/' + m.id) : 'ID профиля появится после сохранения';
+  row.appendChild(idline);
   return row;
 }
 function renderMembers(){
@@ -2444,7 +3027,7 @@ function renderMembers(){
   changed();
 }
 document.getElementById('addMember').addEventListener('click', function(){
-  members.push({ name: '', role: '', note: '', x: Math.round(10 + Math.random() * 76), y: Math.round(10 + Math.random() * 72) });
+  members.push({ id: '', name: '', role: '', note: '', birth: '', generation: 0, x: Math.round(10 + Math.random() * 76), y: Math.round(10 + Math.random() * 72) });
   renderMembers();
   var last = M.lastChild;
   if(last && last.querySelectorAll('input')[1]) last.querySelectorAll('input')[1].focus();
@@ -2601,7 +3184,8 @@ select{margin-top:2px}
 .span2{grid-column:1 / -1}
 .geo{grid-column:1 / -1;display:flex;gap:8px;align-items:center}
 .geo input{margin:0}
-.geo .pos{width:14px;color:var(--muted);font-size:12px;text-align:right}
+.geo .pos{min-width:14px;width:auto;color:var(--muted);font-size:12px;text-align:right}
+.mid{font-size:10.5px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;letter-spacing:.02em}
 .trow{display:grid;grid-template-columns:56px 1fr 32px;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
 .trow input[type=color]{height:34px;padding:2px;cursor:pointer}
 .trow .del,.rrow .del{background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer}
@@ -2647,6 +3231,9 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
   <h3>Участники</h3>
   <p class="sub">Позицию карточки лучше менять перетаскиванием прямо на доске — здесь цифры X/Y как запасной вариант.</p>
   <div id="members"></div>
+  <datalist id="rolePresets">
+__ROLES_OPTIONS__
+  </datalist>
   <button class="ghost" id="addMember" type="button">+ Добавить участника</button>
 </div>
 <div class="panel">
@@ -2672,8 +3259,159 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
 async def handle_fama_edit(request):
     page = (FAMA_EDIT_PAGE
             .replace('__JS__', FAMA_EDIT_SCRIPT)
+            .replace('__ROLES_OPTIONS__', fama_roles_options())
             .replace('__FAMA_DATA__', fam_json_safe(fam_state)))
     return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
+        "Content-Security-Policy": FAMA_PAGE_CSP,
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-cache",
+    })
+
+# ======================== Страница участника ========================
+FAM_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
+
+MEMBER_PAGE_TEMPLATE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>__TITLE__</title>
+<meta property="og:title" content="__TITLE__">
+<meta property="og:description" content="__DESC__">
+<meta property="og:type" content="profile">
+<meta property="og:image" content="https://__HOST__/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="__TITLE__">
+<meta name="twitter:description" content="__DESC__">
+<meta name="twitter:image" content="https://__HOST__/og.png">
+<style>
+:root{--bg:#12141c;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+main{max-width:640px;margin:0 auto}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.head{display:flex;gap:16px;align-items:center}
+.ava{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:#c9b88f;image-rendering:pixelated;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.tile{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:linear-gradient(180deg,#a8793f,#7c5222);color:#f6ecd2;font-size:40px;line-height:88px;text-align:center;text-transform:uppercase;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.head h1{margin:0;font-size:27px;color:var(--gold);word-break:break-word}
+.role{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.role-full{color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:3px;max-width:420px}
+.meta{color:var(--muted);font-size:12.5px;margin-top:6px}
+.note{white-space:pre-line;line-height:1.65;font-size:14.5px;margin:18px 0 6px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:20px 0 6px}
+.rel{display:flex;gap:9px;align-items:center;font-size:14px;padding:8px 0;border-top:1px dashed var(--line);color:var(--fg)}
+.rel .sw{width:24px;height:3px;border-radius:2px;flex:0 0 auto}
+.rel .who{margin-left:auto;color:var(--muted);font-size:12px}
+.none{color:var(--muted);font-size:13px;margin:8px 0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{display:inline-block;background:var(--accent);color:#14161f;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600}
+.btn.ghost{background:transparent;color:var(--gold);border:1px solid var(--line);font-weight:400}
+.foot{margin-top:16px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+  <div class="head">
+    __AVATAR__
+    <div>
+      <h1>__NAME__</h1>
+      __ROLE__
+      __META__
+    </div>
+  </div>
+  __NOTE__
+  <h2>Связи</h2>
+  __RELS__
+  <div class="actions">
+    <a class="btn" href="/?m=__MEMBER_ID__">Показать на доске</a>
+    <a class="btn ghost" href="/">← вся фама</a>
+  </div>
+</div>
+<div class="foot">Ссылка на профиль: <code>__PATH__</code></div>
+</main>
+<script>
+(function(){
+  var img = document.getElementById('avaImg');
+  if(img){ img.onerror = function(){ img.style.display = 'none'; var t = document.getElementById('avaTile'); if(t){ t.hidden = false; } }; }
+})();
+</script>
+</body>
+</html>
+"""
+
+async def handle_member(request):
+    from urllib.parse import quote
+    key = (request.match_info.get("key") or "").strip()
+    members = fam_state.get("members") or []
+    member = None
+    for m in members:
+        if str(m.get("id") or "") == key:
+            member = m
+            break
+    if member is None:
+        low = key.lower()
+        for m in members:
+            if (m.get("name") or "").lower() == low:
+                member = m
+                break
+    if member is None:
+        return web.Response(status=404, text="Участник не найден", content_type="text/plain", charset="utf-8")
+    name = member.get("name") or ""
+    member_id = str(member.get("id") or "")
+    threads = fam_state.get("threads") or []
+    type_map = {t.get("id"): t for t in threads}
+    rels_rows = []
+    for rel in fam_state.get("relations") or []:
+        if rel.get("from") != name and rel.get("to") != name:
+            continue
+        other_name = rel.get("to") if rel.get("from") == name else rel.get("from")
+        other = next((x for x in members if x.get("name") == other_name), None)
+        t = type_map.get(rel.get("type")) or {}
+        color = t.get("color") if re.match(r"^#[0-9a-fA-F]{3,8}$", str(t.get("color") or "")) else "#c9973f"
+        label = t.get("label") or rel.get("type") or "связь"
+        other_url = "/member/" + (str(other.get("id")) if other and other.get("id") else quote(other_name or ""))
+        rels_rows.append(
+            f'<div class="rel"><span class="sw" style="background:{html.escape(color)}"></span>'
+            f'{html.escape(label)}: <a href="{html.escape(other_url)}">{html.escape(other_name or "?")}</a>'
+            f'<span class="who">открыть профиль →</span></div>'
+        )
+    rels_html = "".join(rels_rows) if rels_rows else '<p class="none">Связей пока нет.</p>'
+    meta_bits = []
+    generation = int(member.get("generation") or 0)
+    if generation:
+        meta_bits.append("поколение " + (FAM_ROMAN[generation] if generation < len(FAM_ROMAN) else str(generation)))
+    birth = member.get("birth")
+    if birth:
+        meta_bits.append(str(birth) + " г.")
+    host_source = settings_state.get("host_display") or request.host
+    host = host_source if FAMA_HOST_RE.match(host_source or "") else "your-server-address"
+    note_text = (member.get("note") or "").strip()
+    desc = " ".join(note_text.split())[:200] or ("Профиль участника фамы " + name)
+    role_raw = (member.get("role") or "").strip()
+    role_text = html.escape(role_raw)
+    role_full = fama_role_full_map().get(role_raw) or ""
+    role_html = f'<div class="role">{role_text}</div>' if role_text else ""
+    if role_full:
+        role_html += f'<div class="role-full">{html.escape(role_full)}</div>'
+    page = (MEMBER_PAGE_TEMPLATE
+            .replace("__TITLE__", html.escape(name + (" · " + role_raw if role_raw else "") + " · Фама"))
+            .replace("__DESC__", html.escape(desc))
+            .replace("__HOST__", html.escape(host))
+            .replace("__AVATAR__",
+                     f'<img class="ava" id="avaImg" alt="" src="https://mc-heads.net/avatar/{quote(name)}/96">'
+                     f'<span class="tile" id="avaTile" hidden>{html.escape((name or "?")[:1].upper())}</span>')
+            .replace("__NAME__", html.escape(name))
+            .replace("__ROLE__", role_html)
+            .replace("__META__", f'<div class="meta">{html.escape(" · ".join(meta_bits))}</div>' if meta_bits else "")
+            .replace("__NOTE__", f'<p class="note">{html.escape(note_text)}</p>' if note_text else "")
+            .replace("__RELS__", rels_html)
+            .replace("__MEMBER_ID__", quote(member_id or name))
+            .replace("__PATH__", html.escape("/member/" + (member_id or quote(name)))))
+    return web.Response(text=page, content_type="text/html", charset="utf-8", headers={
         "Content-Security-Policy": FAMA_PAGE_CSP,
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
@@ -2728,6 +3466,12 @@ document.getElementById('btnHost').addEventListener('click', function(){
   post('/panel/host', { password: P.value, host_display: v }, 'outHost', v ? 'Адрес сохранён ✓ На доске теперь показывается он.' : 'Сброшено ✓ Доска показывает адрес, который видит браузер.');
 });
 
+document.getElementById('btnServer').addEventListener('click', function(){
+  var v = document.getElementById('serverName').value.trim();
+  if(!v){ out('outServer', 'Введите название сервера.', 'err'); return; }
+  post('/panel/server', { password: P.value, server_name: v }, 'outServer', 'Сервер сохранён ✓ Теперь на старте показывается «' + v + '».');
+});
+
 document.getElementById('btnPassword').addEventListener('click', function(){
   var np = document.getElementById('newPass').value;
   if(!np){ out('outPassword', 'Введите новый пароль.', 'err'); return; }
@@ -2755,6 +3499,9 @@ document.getElementById('btnPing').addEventListener('click', function(){
 document.getElementById('curPing').textContent = 'Сейчас пингуется: ' + (__PING_URL__ || 'адрес по умолчанию из репозитория');
 document.getElementById('curHost').textContent = 'Сейчас показывается на доске: ' + (__HOST_DISPLAY__ || '(автоматически — адрес из браузера)');
 document.getElementById('curEditorPass').textContent = 'Пароль редактора: задан ' + (__HAS_PASS__ ? '(да)' : '(НЕТ — редактор выключен)');
+document.getElementById('curServer').textContent = 'Сейчас на сайте: ' + __SERVER_NAME__;
+document.getElementById('serverName').value = __SERVER_NAME__;
+document.getElementById('curBackup').textContent = __BACKUP_INFO__;
 """
 
 PANEL_PAGE_TEMPLATE = """<!doctype html>
@@ -2780,6 +3527,21 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
   <button id="btnPassword" type="button">Сменить пароль</button>
   <div class="info" id="curEditorPass"></div>
   <div class="out" id="outPassword"></div>
+</div>
+
+<div class="panel">
+  <h3>Сервер фамы</h3>
+  <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один — «Норт».</p>
+  <input id="serverName" placeholder="Норт">
+  <button id="btnServer" type="button">Сохранить сервер</button>
+  <div class="info" id="curServer"></div>
+  <div class="out" id="outServer"></div>
+</div>
+
+<div class="panel">
+  <h3>Авто-бэкап доски в GitHub</h3>
+  <p class="sub">Когда задан токен, каждое сохранение доски коммитит data/fam.json в репозиторий. Данные переживают перезапуск Render. Токен в панели не хранится — только в Environment.</p>
+  <div class="info" id="curBackup"></div>
 </div>
 
 <div class="panel">
@@ -2820,13 +3582,23 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 async def handle_panel(request):
     if not fama_effective_password():
         return web.Response(status=503, text="Panel disabled: set FAMA_PASSWORD or open /panel after setting a password in .env")
+    if fama_github_token():
+        backup_info = f"Включён ✓ Репозиторий: {FAMA_GITHUB_REPO}"
+        if fam_backup_state.get("last_ok"):
+            backup_info += f"\nПоследний бэкап: {fam_backup_state['last_ok']}"
+        if fam_backup_state.get("last_error"):
+            backup_info += f"\nПоследняя ошибка: {fam_backup_state['last_error']}"
+    else:
+        backup_info = "Выключен. Добавьте FAMA_GITHUB_TOKEN (fine-grained, Contents: Read and write) в Environment на Render."
     page = (PANEL_PAGE_TEMPLATE
             .replace('__STYLES__', PANEL_PAGE_STYLES)
             .replace('__JS__', PANEL_PAGE_JS)
             .replace('__DEFAULT_REPO__', json.dumps(PANEL_DEFAULT_REPO))
             .replace('__PING_URL__', json.dumps(settings_state.get('ping_url') or ''))
             .replace('__HOST_DISPLAY__', json.dumps(settings_state.get('host_display') or ''))
-            .replace('__HAS_PASS__', json.dumps(bool(fama_effective_password()))))
+            .replace('__HAS_PASS__', json.dumps(bool(fama_effective_password())))
+            .replace('__SERVER_NAME__', json.dumps(fama_server_name(), ensure_ascii=False))
+            .replace('__BACKUP_INFO__', json.dumps(backup_info, ensure_ascii=False)))
     return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
         "Content-Security-Policy": FAMA_PAGE_CSP,
         "X-Content-Type-Options": "nosniff",
@@ -2840,11 +3612,16 @@ def panel_unauthorized(ip, reason):
 
 async def panel_check(request, body):
     ip = request['real_ip']
+    blocked = too_many_attempts(ip)
+    if blocked:
+        return blocked
     if not isinstance(body, dict):
         return web.json_response({"error": "Invalid data"}, status=400)
     password = body.get("password")
     if not isinstance(password, str) or not secrets.compare_digest(password, fama_effective_password()):
+        note_login_failure(ip)
         return panel_unauthorized(ip, "wrong-password")
+    note_login_success(ip)
     return None
 
 async def handle_panel_host(request):
@@ -2862,6 +3639,22 @@ async def handle_panel_host(request):
     save_settings_state()
     log_info(f"[PANEL] host_display set to {host or '(auto)'} ip={request['real_ip']}")
     return web.json_response({"status": "success", "host_display": host})
+
+async def handle_panel_server(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    deny = await panel_check(request, body)
+    if deny:
+        return deny
+    name = fam_clean_text((body.get("server_name") or "").strip(), 40)
+    if not name:
+        return web.json_response({"error": "Server name cannot be empty"}, status=400)
+    settings_state["server_name"] = name
+    save_settings_state()
+    log_info(f"[PANEL] server_name set to {name!r} ip={request['real_ip']}")
+    return web.json_response({"status": "success", "server_name": name})
 
 async def handle_panel_password(request):
     try:
@@ -3097,6 +3890,24 @@ async def handle_status(request):
     rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "FAMA_PASSWORD не задан — редактор выключен"))
     host_d = settings_state.get("host_display") or ""
     rows.append(status_row(True, "Адрес на доске", host_d if host_d else "автоматический (из браузера)"))
+    rows.append(status_row(True, "Сервер фамы", fama_server_name()))
+    if fama_github_token():
+        if fam_backup_state.get("last_error"):
+            rows.append(status_row(False, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · ошибка: {fam_backup_state['last_error']}"))
+        elif fam_backup_state.get("last_ok"):
+            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · последний: {fam_backup_state['last_ok']}"))
+        else:
+            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · ждёт первого сохранения"))
+    else:
+        rows.append(status_row(False, "Авто-бэкап в GitHub", "выключен — задайте FAMA_GITHUB_TOKEN"))
+    blocked_now = sum(1 for guard_ip in list(login_guard) if login_block_remaining(guard_ip) > 0)
+    rows.append(status_row(True, "Защита от перебора", f"заблокировано IP сейчас: {blocked_now} · лимит {LOGIN_FAIL_LIMIT} попыток за {LOGIN_FAIL_WINDOW // 60} мин"))
+    bot_token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
+    if bot_token:
+        guild = os.environ.get("FAMA_DISCORD_GUILD_ID", "").strip()
+        rows.append(status_row(True, "Discord-бот", f"включён · сервер {guild or 'все серверы (глобально)'}"))
+    else:
+        rows.append(status_row(False, "Discord-бот", "выключен — задайте DISCORD_BOT_TOKEN"))
     ping = settings_state.get("ping_url") or ""
     if not ping:
         try:
@@ -3193,10 +4004,31 @@ async def handle_info(request):
     host = request.host if ROOT_HOST_RE.match(request.host or '') else 'your-server-address'
     return web.Response(text=ROOT_PAGE.replace('{{HOST}}', host), content_type='text/html', charset='utf-8', headers=ROOT_HEADERS)
 
+async def start_fama_discord(app):
+    token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
+    if not token:
+        log_info("[BOT] выключен: DISCORD_BOT_TOKEN не задан")
+        return
+    app["fama_bot_state"] = await fam_bot.start_bot(
+        token=token,
+        guild_id=os.environ.get("FAMA_DISCORD_GUILD_ID", "").strip(),
+        roles=FAMA_ROLES,
+        add_member=fama_add_member,
+        public_url=fama_public_url(),
+        log_info=log_info,
+        log_warn=log_warn,
+        allowed_role_id=os.environ.get("FAMA_DISCORD_ROLE_ID", "").strip(),
+    )
+
+async def stop_fama_discord(app):
+    await fam_bot.stop_bot(app.get("fama_bot_state"))
+
 app = web.Application(middlewares=[security_middleware], client_max_size=MAX_AVATAR_SIZE)
 
 app.on_startup.append(start_background_tasks)
 app.on_cleanup.append(cleanup_background_tasks)
+app.on_startup.append(start_fama_discord)
+app.on_cleanup.append(stop_fama_discord)
 
 app.router.add_get('/', handle_root)
 app.router.add_get('/info', handle_info)
@@ -3207,6 +4039,8 @@ app.router.add_get('/panel', handle_panel)
 app.router.add_post('/panel/host', handle_panel_host)
 app.router.add_post('/panel/password', handle_panel_password)
 app.router.add_post('/panel/ping', handle_panel_ping)
+app.router.add_post('/panel/server', handle_panel_server)
+app.router.add_get('/member/{key}', handle_member)
 app.router.add_get('/status', handle_status)
 app.router.add_get('/og.png', handle_og)
 app.router.add_get('/api/', handle_api_check)
