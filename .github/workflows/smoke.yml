@@ -54,6 +54,7 @@ jobs:
           FAMA_PASSWORD: "smoke-test-password"
         run: |
           mkdir -p data
+          rm -f data/settings.json
           cp fam.json data/fam.json || true
           python server.py > server.log 2>&1 &
           echo $! > server.pid
