@@ -1804,6 +1804,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -2201,10 +2202,7 @@ body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:G
 .gate-next button:disabled{opacity:.4;cursor:default}
 .gate-back{background:none !important;border:0;color:#6b4a95 !important;cursor:pointer;font-size:12.5px;text-decoration:underline;padding:0 !important}
 /* ---------- фильтры ---------- */
-.searchbar{top:62px;left:50%;transform:translateX(-50%);width:min(520px,86vw);display:flex;flex-direction:column;gap:7px;z-index:5}
-.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted);font:11.5px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
-.chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .chip.on{color:#1a1029;background:var(--gold);border-color:var(--gold);font-weight:600}
 .photo.muted{opacity:.22;filter:grayscale(.55)}
 #threads path.muted,#threads circle.muted{opacity:.05 !important}
@@ -2220,8 +2218,7 @@ html.m-mode .legend{display:none}
 html.m-mode .hint{display:none}
 html.m-mode .searchbar{top:66px;width:calc(100vw - 16px)}
 html.m-mode .members,html.m-mode .profile,html.m-mode .panel-box{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:56vh;border-radius:14px}
-html.m-mode .chips{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
-@media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}.searchbar{top:60px;width:calc(100vw - 16px)}}
+@media(max-width:640px){.title h1{font-size:20px}.photo{width:118px}.photo b{font-size:11px}.legend{max-width:56vw;font-size:11px;padding:8px 10px}.hint{display:none}}
 """
 
 FAMA_PAGE_JS = """
@@ -2523,41 +2520,6 @@ function toggle(which){
 }
 btnInfo.addEventListener('click', function(){ toggle('info'); });
 btnMembers.addEventListener('click', function(){ toggle('members'); });
-
-/* ---------- фильтры по типам связей ---------- */
-var filterChips = document.getElementById('filterChips');
-var activeFilter = '';
-function renderChips(){
-  filterChips.innerHTML = '';
-  (fam.threads || []).forEach(function(t){
-    var chip = el('button', 'chip' + (activeFilter === t.id ? ' on' : ''));
-    chip.type = 'button';
-    var dot = el('span', 'dot'); dot.style.background = t.color;
-    chip.appendChild(dot); chip.appendChild(document.createTextNode(t.label));
-    chip.addEventListener('click', function(){
-      activeFilter = (activeFilter === t.id) ? '' : t.id;
-      renderChips(); applyFilters();
-    });
-    filterChips.appendChild(chip);
-  });
-}
-function applyFilters(){
-  (fam.members || []).forEach(function(m){
-    var card = cardEls[m.name]; if(!card) return;
-    var matchT = true;
-    if(activeFilter){
-      matchT = (fam.relations || []).some(function(r){ return r.type === activeFilter && (r.from === m.name || r.to === m.name); });
-    }
-    card.classList.toggle('muted', !matchT);
-  });
-  var elems = svg.querySelectorAll('path[data-a], circle[data-a]');
-  Array.prototype.forEach.call(elems, function(p){
-    var match = !activeFilter || p.getAttribute('data-type') === activeFilter;
-    p.classList.toggle('muted', !match);
-  });
-}
-renderChips();
-applyFilters();
 
 /* ---------- стартовый экран ---------- */
 var gate = document.getElementById('gate');
