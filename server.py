@@ -1799,6 +1799,8 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -2098,11 +2100,11 @@ def too_many_attempts(ip):
 
 
 FAMA_PAGE_STYLES = """
-:root{--bg:#0b0d13;--panel:rgba(17,19,27,.86);--fg:#e9e6df;--muted:#8f929e;--gold:#d6b35c;--line:#2b2f3d;--accent:#c98a3f}
+:root{--bg:#0b0714;--panel:rgba(26,18,43,.88);--fg:#efe9f9;--muted:#a99bc6;--gold:#c9a2ff;--line:#3a2b57;--accent:#9b6bff}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%,#1a1626 0%,transparent 60%),radial-gradient(900px 600px at 18% 82%,#0e1720 0%,transparent 55%),var(--bg);color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif}
-#board{position:fixed;inset:0;overflow:hidden;background-color:#b97f4e;background-image:linear-gradient(180deg,rgba(255,244,224,.12),rgba(66,32,8,.20)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.38 0 0 0 0 0.22 0 0 0 0 0.10 0 0 0 0.6 0'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0.96 0 0 0 0 0.87 0 0 0 0 0.70 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23c)'/%3E%3Crect width='240' height='240' filter='url(%23l)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 25% 20%,rgba(150,90,45,.35),transparent 55%),radial-gradient(ellipse at 75% 75%,rgba(90,50,20,.40),transparent 60%);background-size:auto,240px 240px,cover,cover;box-shadow:inset 0 0 200px rgba(50,25,8,.55),inset 0 0 70px rgba(40,20,5,.40)}
+body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif}
+#board{position:fixed;inset:0;overflow:hidden;background:#472e70;color:var(--fg);box-shadow:none}
 #threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .thread-glow{fill:none;opacity:.22;stroke-linecap:round}
 .thread-main{fill:none;opacity:.95;stroke-linecap:round}
@@ -2113,7 +2115,7 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 #threads circle.hot{opacity:1}
 .profile{top:60px;right:14px;width:min(360px,92vw);max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px 16px;box-shadow:0 16px 40px rgba(0,0,0,.6);font-family:system-ui,sans-serif}
 .profile .ph{display:flex;gap:12px;align-items:center;position:relative}
-.profile .ph img{width:52px;height:52px;image-rendering:pixelated;border-radius:4px;background:#c9b88f;flex:0 0 auto}
+.profile .ph img{width:52px;height:52px;image-rendering:pixelated;border-radius:4px;background:#cbbce8;flex:0 0 auto}
 .profile .ava-tile{width:52px;height:52px;line-height:52px;font-size:24px;flex:0 0 auto}
 .profile h3{margin:0;color:var(--gold);font-size:19px;word-break:break-word}
 .profile .role{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
@@ -2124,21 +2126,21 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .profile .close{position:absolute;top:0;right:0;background:none;border:1px solid var(--line);border-radius:8px;color:var(--muted);width:28px;height:28px;cursor:pointer;font-size:14px}
 .profile .close:hover{color:var(--fg)}
 .profile .none{font-size:12.5px;color:var(--muted);margin:8px 0 0}
-.photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:linear-gradient(180deg,#eee4cd,#d8c9a3 70%,#cbb98f);color:#2c210e;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.photo{position:absolute;width:152px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:linear-gradient(180deg,#f4eeff,#ded2f3 70%,#cbbce8);color:#291a40;border-radius:3px;padding:9px 10px 11px;box-shadow:0 12px 24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.28);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .photo.dragging{cursor:grabbing;z-index:3;box-shadow:0 22px 40px rgba(0,0,0,.8),inset 0 0 0 1px rgba(255,255,255,.28)}
-.photo::before{content:'';position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:64px;height:20px;background:rgba(214,179,92,.4);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 5px rgba(0,0,0,.35)}
-.photo img{display:block;width:48px;height:48px;margin:0 auto 6px;image-rendering:pixelated;border-radius:3px;background:#c9b88f;box-shadow:0 1px 3px rgba(0,0,0,.4)}
-.ava-tile{display:block;width:48px;height:48px;margin:0 auto 6px;border-radius:3px;background:linear-gradient(180deg,#a8793f,#7c5222);color:#f6ecd2;font-size:22px;line-height:48px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase}
+.photo::before{content:'';position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:64px;height:20px;background:rgba(201,162,255,.45);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 5px rgba(0,0,0,.35)}
+.photo img{display:block;width:48px;height:48px;margin:0 auto 6px;image-rendering:pixelated;border-radius:3px;background:#cbbce8;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.ava-tile{display:block;width:48px;height:48px;margin:0 auto 6px;border-radius:3px;background:linear-gradient(180deg,#8a63d6,#5b3a9e);color:#f4ecff;font-size:22px;line-height:48px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase}
 .mrow .ava-tile{width:28px;height:28px;line-height:28px;font-size:14px;font-weight:600}
-.photo b{display:block;font-size:13px;letter-spacing:.03em;color:#3a2a12;text-transform:uppercase;word-break:break-word;text-align:center}
-.photo .role{display:block;color:#7a5f33;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em;text-align:center}
-.photo .note{margin:6px 0 0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#2c210e;max-height:7.6em;overflow:hidden;text-align:center}
+.photo b{display:block;font-size:13px;letter-spacing:.03em;color:#33204d;text-transform:uppercase;word-break:break-word;text-align:center}
+.photo .role{display:block;color:#6f5a92;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em;text-align:center}
+.photo .note{margin:6px 0 0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#291a40;max-height:7.6em;overflow:hidden;text-align:center}
 .hud{position:fixed;z-index:5;font-family:system-ui,sans-serif}
 .hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px}
-.hud button.on{background:var(--gold);color:#12131a;border-color:var(--gold)}
+.hud button.on{background:var(--gold);color:#1a1029;border-color:var(--gold)}
 .title{top:12px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;max-width:70vw}
-.title h1{margin:0;font-size:30px;letter-spacing:.14em;color:#3f2410;text-shadow:0 1px 0 rgba(255,236,205,.55),0 2px 12px rgba(60,30,8,.35)}
-.title .tagline{font-style:italic;color:#5d3a1e;font-size:13px;margin-top:3px;text-shadow:0 1px 0 rgba(255,236,205,.4)}
+.title h1{margin:0;font-size:30px;letter-spacing:.14em;color:#2b1247;text-shadow:0 1px 0 rgba(245,235,255,.5),0 2px 14px rgba(40,10,70,.45)}
+.title .tagline{font-style:italic;color:#4b2e6e;font-size:13px;margin-top:3px;text-shadow:0 1px 0 rgba(245,235,255,.4)}
 .btns{top:14px;right:14px;display:flex;gap:8px}
 .panel-box{top:60px;right:14px;width:min(380px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .panel-box .desc{white-space:pre-line;line-height:1.62;font-size:14px;color:var(--fg)}
@@ -2168,36 +2170,36 @@ body{margin:0;overflow:hidden;background:radial-gradient(1100px 700px at 70% 18%
 .hint code{background:#14161f;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg)}
 #btnSavePos{background:#2a3d2c;color:#8fd6a0;border-color:#3c5a40}
 #btnSavePos:hover{background:#35503a}
-.photo .card-badge{position:absolute;top:4px;left:5px;background:rgba(63,36,16,.85);color:#f6e6c6;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 6px;letter-spacing:.06em;pointer-events:none}
-.photo .card-year{position:absolute;top:4px;right:5px;background:rgba(255,255,255,.55);color:#4a3418;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 5px;pointer-events:none}
+.photo .card-badge{position:absolute;top:4px;left:5px;background:rgba(48,24,78,.88);color:#f2e8ff;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 6px;letter-spacing:.06em;pointer-events:none}
+.photo .card-year{position:absolute;top:4px;right:5px;background:rgba(255,255,255,.6);color:#4a2f6e;font:10px/1.6 system-ui,sans-serif;border-radius:6px;padding:0 5px;pointer-events:none}
 .profile .meta-line{font-size:12px;color:var(--muted);margin:3px 0 0}
 .profile .linkrow{display:flex;gap:6px;margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 .profile .linkrow input{flex:1;min-width:0;background:#14161f;border:1px solid var(--line);border-radius:8px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:7px 9px}
-.profile .linkrow button{background:var(--gold);color:#12131a;border:0;border-radius:8px;padding:0 12px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.profile .linkrow button{background:var(--gold);color:#1a1029;border:0;border-radius:8px;padding:0 12px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
 /* ---------- стартовое окно ---------- */
-#gate{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(36,20,8,.74);backdrop-filter:blur(6px);font-family:system-ui,sans-serif}
+#gate{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(24,10,44,.78);backdrop-filter:blur(6px);font-family:system-ui,sans-serif}
 #gate[hidden]{display:none}
-.gate-card{width:min(540px,96vw);background:linear-gradient(180deg,#f5ebd4,#e6d5b0);color:#2c210e;border-radius:16px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.55)}
-.gate-step{font-size:11px;color:#7c5a32;letter-spacing:.1em;text-transform:uppercase}
-.gate-card h2{margin:6px 0 4px;font-size:24px;letter-spacing:.03em;color:#3f2410}
-.gate-card p{margin:0 0 16px;color:#6b4a26;font-size:13.5px;line-height:1.5}
+.gate-card{width:min(540px,96vw);background:linear-gradient(180deg,#f3ebff,#dccbf5);color:#291a40;border-radius:16px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.55)}
+.gate-step{font-size:11px;color:#6b4a95;letter-spacing:.1em;text-transform:uppercase}
+.gate-card h2{margin:6px 0 4px;font-size:24px;letter-spacing:.03em;color:#2b1247}
+.gate-card p{margin:0 0 16px;color:#5b4278;font-size:13.5px;line-height:1.5}
 .gate-choices{display:grid;gap:9px}
-.gate-opt{display:flex;gap:13px;align-items:center;border:2px solid rgba(90,60,25,.22);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.35);cursor:pointer;font:inherit;color:inherit;text-align:left}
-.gate-opt:hover{border-color:#8a5f2a;background:rgba(255,255,255,.62)}
-.gate-opt.on{border-color:#7a4f1e;background:#fff9ea;box-shadow:0 0 0 3px rgba(201,151,63,.25)}
+.gate-opt{display:flex;gap:13px;align-items:center;border:2px solid rgba(90,60,150,.25);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.45);cursor:pointer;font:inherit;color:inherit;text-align:left}
+.gate-opt:hover{border-color:#8a63d6;background:rgba(255,255,255,.62)}
+.gate-opt.on{border-color:#6a3fb0;background:#faf5ff;box-shadow:0 0 0 3px rgba(155,107,255,.28)}
 .gate-opt .ico{font-size:26px;flex:0 0 auto;width:34px;text-align:center}
-.gate-opt b{display:block;font-size:15px;color:#3f2410}
-.gate-opt span{display:block;font-size:12px;color:#6b4a26;margin-top:1px}
+.gate-opt b{display:block;font-size:15px;color:#2b1247}
+.gate-opt span{display:block;font-size:12px;color:#5b4278;margin-top:1px}
 .gate-next{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.gate-next button{background:#7a4f1e;color:#fff4dc;border:0;border-radius:10px;padding:11px 22px;font-size:14.5px;cursor:pointer}
+.gate-next button{background:#6a3fb0;color:#f7f0ff;border:0;border-radius:10px;padding:11px 22px;font-size:14.5px;cursor:pointer}
 .gate-next button:disabled{opacity:.4;cursor:default}
-.gate-back{background:none !important;border:0;color:#7c5a32 !important;cursor:pointer;font-size:12.5px;text-decoration:underline;padding:0 !important}
+.gate-back{background:none !important;border:0;color:#6b4a95 !important;cursor:pointer;font-size:12.5px;text-decoration:underline;padding:0 !important}
 /* ---------- фильтры ---------- */
 .searchbar{top:62px;left:50%;transform:translateX(-50%);width:min(520px,86vw);display:flex;flex-direction:column;gap:7px;z-index:5}
 .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted);font:11.5px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
 .chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-.chip.on{color:#12131a;background:var(--gold);border-color:var(--gold);font-weight:600}
+.chip.on{color:#1a1029;background:var(--gold);border-color:var(--gold);font-weight:600}
 .photo.muted{opacity:.22;filter:grayscale(.55)}
 #threads path.muted,#threads circle.muted{opacity:.05 !important}
 /* ---------- мобильный режим ---------- */
@@ -2221,12 +2223,10 @@ var fam = __FAMA_DATA__;
 var SERVER_NAME = __SERVER_NAME__;
 var ROLE_FULL = __ROLES_JSON__;
 var ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX'];
-var genMode = false;
-var genSavedPositions = null;
 
 function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
 
-document.getElementById('fam_title').textContent = fam.title || 'Фама';
+document.getElementById('fam_title').textContent = fam.title || 'Харука-Арч';
 var tagEl = document.getElementById('tagline');
 tagEl.textContent = fam.tagline || '';
 if(!fam.tagline) tagEl.hidden = true;
@@ -2351,7 +2351,6 @@ function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
 board.addEventListener('pointerdown', function(e){
   var card = e.target.closest ? e.target.closest('.photo') : null;
   if(!card || !card.dataset.name) return;
-  if(genMode) return;
   if(e.pointerType === 'mouse' && e.button !== 0) return;
   e.preventDefault();
   var br = board.getBoundingClientRect();
@@ -2556,47 +2555,6 @@ function applyFilters(){
 renderChips();
 applyFilters();
 
-/* ---------- режим поколений ---------- */
-var btnGen = document.getElementById('btnGen');
-function applyGenMode(on){
-  genMode = on;
-  btnGen.classList.toggle('on', on);
-  if(on){
-    genSavedPositions = {};
-    (fam.members || []).forEach(function(m){ genSavedPositions[m.name] = { x: m.x, y: m.y }; });
-    var groups = {};
-    (fam.members || []).forEach(function(m){
-      var g = m.generation || 0;
-      if(!groups[g]) groups[g] = [];
-      groups[g].push(m);
-    });
-    var keys = Object.keys(groups).map(Number).sort(function(a, b){ return a - b; });
-    keys.forEach(function(g, gi){
-      var row = groups[g];
-      var y = keys.length <= 1 ? 46 : 10 + gi * (76 / (keys.length - 1));
-      row.forEach(function(m, i){
-        var x = row.length <= 1 ? 50 : 6 + i * (88 / (row.length - 1));
-        var card = cardEls[m.name];
-        if(card){ card.style.left = x.toFixed(2) + '%'; card.style.top = y.toFixed(2) + '%'; }
-      });
-    });
-    btnSavePos.hidden = true; dirty = false;
-    drawThreads();
-  } else if(genSavedPositions){
-    (fam.members || []).forEach(function(m){
-      var p = genSavedPositions[m.name]; if(!p) return;
-      m.x = p.x; m.y = p.y;
-      var card = cardEls[m.name];
-      if(card){ card.style.left = m.x + '%'; card.style.top = m.y + '%'; }
-    });
-    genSavedPositions = null;
-    drawThreads();
-  }
-}
-if(btnGen){
-  btnGen.addEventListener('click', function(){ applyGenMode(!genMode); });
-}
-
 /* ---------- стартовый экран ---------- */
 var gate = document.getElementById('gate');
 var gateStepEl = document.getElementById('gateStep');
@@ -2642,13 +2600,13 @@ function renderGate(){
     gateBackBtn.hidden = true;
   } else {
     gateStepEl.textContent = 'Шаг 2 из 2';
-    gateTitle.textContent = 'На каком сервере фама?';
+    gateTitle.textContent = 'На каком сервере Харука-Арч?';
     gateSub.textContent = 'Пока доступен один сервер — «Норт». Другие появятся позже.';
     var sb = el('button', 'gate-opt on'); sb.type = 'button';
     sb.appendChild(el('span', 'ico', '⛏'));
     var st = el('span');
     st.appendChild(el('b', null, SERVER_NAME));
-    st.appendChild(el('span', null, 'Основной сервер фамы'));
+    st.appendChild(el('span', null, 'Основной сервер Харука-Арч'));
     sb.appendChild(st);
     sb.addEventListener('click', function(){ gateServer = SERVER_NAME; renderGate(); });
     gateChoices.appendChild(sb);
@@ -2720,14 +2678,14 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>__TITLE__ · Доска фамы</title>
+<title>__TITLE__ · Доска Харука-Арч</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d13'/%3E%3Cpath d='M8 8 Q16 17 24 24' stroke='%23c9973f' stroke-width='2' fill='none'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23d6b35c'/%3E%3Ccircle cx='24' cy='24' r='4' fill='%23d6b35c'/%3E%3C/svg%3E">
-<meta property="og:title" content="__TITLE__ · Доска фамы">
+<meta property="og:title" content="__TITLE__ · Доска Харука-Арч">
 <meta property="og:description" content="__OGDESC__">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://__HOST__/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="__TITLE__ · Доска фамы">
+<meta name="twitter:title" content="__TITLE__ · Доска Харука-Арч">
 <meta name="twitter:description" content="__OGDESC__">
 <meta name="twitter:image" content="https://__HOST__/og.png">
 <style>__STYLES__</style>
@@ -2760,9 +2718,8 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="hud btns">
 <button id="btnSavePos" type="button" hidden>Сохранить позиции</button>
-<button id="btnGen" type="button">Поколения</button>
 <button id="btnMembers" type="button">Участники</button>
-<button id="btnInfo" type="button">О фаме</button>
+<button id="btnInfo" type="button">О Харука-Арч</button>
 </div>
 
 <div class="hud panel-box" id="infoPanel" hidden>
@@ -2779,7 +2736,7 @@ __ROLES__
 <div class="hud legend" id="legend"></div>
 
 <div class="hud hint">
-Сервер фамы: <code id="srvName">Норт</code> · <a href="#" id="gateChange">сменить</a><br>
+Сервер Харука-Арч: <code id="srvName">Норт</code> · <a href="#" id="gateChange">сменить</a><br>
 Figura Cloud IP: <code>__HOST__</code><br>
 карточки можно перетаскивать и нажимать · <a href="/fama/edit">редактировать</a> · <a href="/status">статус</a>
 </div>
@@ -2799,7 +2756,7 @@ async def handle_root(request):
     og_desc = fam_state.get('tagline') or fam_state.get('description') or 'Доска нашей семьи'
     og_desc = ' '.join(og_desc.split())[:200]
     page = (FAMA_PAGE_TEMPLATE
-            .replace('__TITLE__', html.escape(fam_state.get('title') or 'Фама'))
+            .replace('__TITLE__', html.escape(fam_state.get('title') or 'Харука-Арч'))
             .replace('__OGDESC__', html.escape(og_desc))
             .replace('__STYLES__', FAMA_PAGE_STYLES)
             .replace('__JS__', FAMA_PAGE_JS)
@@ -3198,11 +3155,11 @@ FAMA_EDIT_PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Редактор фамы</title>
+<title>Редактор Харука-Арч</title>
 <style>
-:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+:root{--bg:#0d0a16;--bg2:#171126;--card:#1d1530;--fg:#ece6f7;--muted:#a99cc4;--gold:#c9a2ff;--line:#352a4e;--accent:#9b6bff}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
 main{max-width:900px;margin:0 auto}
 h1{color:var(--gold);font-size:26px;margin:0 0 4px}
 p.h{color:var(--muted);margin:0 0 16px;font-size:13px}
@@ -3244,21 +3201,21 @@ button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line
 </head>
 <body>
 <main>
-<h1>Редактор фамы</h1>
-<p class="h">Страница для старших фамы. Все правки сразу появляются на <a style="color:var(--accent)" href="/">главной доске</a>.</p>
+<h1>Редактор Харука-Арч</h1>
+<p class="h">Страница для старших Харука-Арч. Все правки сразу появляются на <a style="color:var(--accent)" href="/">главной доске</a>.</p>
 <div class="draftbar" id="draftbar" hidden><span>Найден несохранённый черновик с прошлого раза.</span><button id="btnRestore" type="button">Восстановить</button><button id="btnDiscard" class="ghost" type="button">Удалить</button></div>
 <div class="panel pvwrap">
   <h3>Живое превью доски</h3>
   <p class="sub">Это как будет выглядеть доска. Карточки можно таскать мышью прямо здесь — позиции сохранятся при сохранении.</p>
   <div class="pv" id="pvBoard"><svg id="pvThreads"></svg><span class="pvhint">тащи карточки мышью ✓</span></div>
 </div>
-<label class="label">Название фамы</label>
-<input id="title" placeholder="Фама Ловатьер">
+<label class="label">Название Харука-Арч</label>
+<input id="title" placeholder="Харука-Арч">
 <div class="grid2">
   <div><label class="label">Короткая подпись</label><input id="tagline" placeholder="A Family United"></div>
   <div><label class="label">Пароль редактора</label><input id="pass" type="password" placeholder="пароль редактора"></div>
 </div>
-<label class="label">Описание фамы</label>
+<label class="label">Описание Харука-Арч</label>
 <textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
 <div class="panel">
   <h3>Участники</h3>
@@ -3320,15 +3277,15 @@ MEMBER_PAGE_TEMPLATE = """<!doctype html>
 <meta name="twitter:description" content="__DESC__">
 <meta name="twitter:image" content="https://__HOST__/og.png">
 <style>
-:root{--bg:#12141c;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f}
+:root{--bg:#0d0a16;--card:#1d1530;--fg:#ece6f7;--muted:#a99cc4;--gold:#c9a2ff;--line:#352a4e;--accent:#9b6bff}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
 main{max-width:640px;margin:0 auto}
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
 .head{display:flex;gap:16px;align-items:center}
-.ava{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:#c9b88f;image-rendering:pixelated;box-shadow:0 4px 14px rgba(0,0,0,.5)}
-.tile{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:linear-gradient(180deg,#a8793f,#7c5222);color:#f6ecd2;font-size:40px;line-height:88px;text-align:center;text-transform:uppercase;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.ava{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:#cbbce8;image-rendering:pixelated;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.tile{width:88px;height:88px;flex:0 0 auto;border-radius:6px;background:linear-gradient(180deg,#8a63d6,#5b3a9e);color:#f4ecff;font-size:40px;line-height:88px;text-align:center;text-transform:uppercase;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .head h1{margin:0;font-size:27px;color:var(--gold);word-break:break-word}
 .role{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
 .role-full{color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:3px;max-width:420px}
@@ -3340,7 +3297,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .rel .who{margin-left:auto;color:var(--muted);font-size:12px}
 .none{color:var(--muted);font-size:13px;margin:8px 0}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
-.btn{display:inline-block;background:var(--accent);color:#14161f;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600}
+.btn{display:inline-block;background:var(--accent);color:#1a1029;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn.ghost{background:transparent;color:var(--gold);border:1px solid var(--line);font-weight:400}
 .foot{margin-top:16px;font-size:12.5px;color:var(--muted)}
 </style>
@@ -3361,7 +3318,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
   __RELS__
   <div class="actions">
     <a class="btn" href="/?m=__MEMBER_ID__">Показать на доске</a>
-    <a class="btn ghost" href="/">← вся фама</a>
+    <a class="btn ghost" href="/">← на доску Харука-Арч</a>
   </div>
 </div>
 <div class="foot">Ссылка на профиль: <code>__PATH__</code></div>
@@ -3423,7 +3380,7 @@ async def handle_member(request):
     host_source = settings_state.get("host_display") or request.host
     host = host_source if FAMA_HOST_RE.match(host_source or "") else "your-server-address"
     note_text = (member.get("note") or "").strip()
-    desc = " ".join(note_text.split())[:200] or ("Профиль участника фамы " + name)
+    desc = " ".join(note_text.split())[:200] or ("Профиль участника Харука-Арч " + name)
     role_raw = (member.get("role") or "").strip()
     role_text = html.escape(role_raw)
     role_full = fama_role_full_map().get(role_raw) or ""
@@ -3431,7 +3388,7 @@ async def handle_member(request):
     if role_full:
         role_html += f'<div class="role-full">{html.escape(role_full)}</div>'
     page = (MEMBER_PAGE_TEMPLATE
-            .replace("__TITLE__", html.escape(name + (" · " + role_raw if role_raw else "") + " · Фама"))
+            .replace("__TITLE__", html.escape(name + (" · " + role_raw if role_raw else "") + " · Харука-Арч"))
             .replace("__DESC__", html.escape(desc))
             .replace("__HOST__", html.escape(host))
             .replace("__AVATAR__",
@@ -3453,9 +3410,9 @@ async def handle_member(request):
 
 # ======================== Панель настроек ========================
 PANEL_PAGE_STYLES = """
-:root{--bg:#12141c;--bg2:#191d29;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--accent:#c9973f;--ok:#4caf6d;--err:#e07070}
+:root{--bg:#0d0a16;--bg2:#171126;--card:#1d1530;--fg:#ece6f7;--muted:#a99cc4;--gold:#c9a2ff;--line:#352a4e;--accent:#9b6bff;--ok:#4caf6d;--err:#e07070}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
 main{max-width:760px;margin:0 auto}
 h1{color:var(--gold);font-size:26px;margin:0 0 4px}
 p.h{color:var(--muted);margin:0 0 16px;font-size:13px}
@@ -3464,7 +3421,7 @@ p.h{color:var(--muted);margin:0 0 16px;font-size:13px}
 .panel p.sub{margin:0 0 8px;font-size:12px;color:var(--muted)}
 label.label{display:block;color:var(--muted);font-size:12px;margin:12px 0 2px;text-transform:uppercase;letter-spacing:.05em}
 input{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;margin:2px 0}
-button{background:var(--accent);border:0;border-radius:9px;padding:9px 18px;cursor:pointer;color:#14161f;font-size:14px;font-weight:600;margin-top:10px}
+button{background:var(--accent);border:0;border-radius:9px;padding:9px 18px;cursor:pointer;color:#1a1029;font-size:14px;font-weight:600;margin-top:10px}
 button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);font-weight:400}
 .out{font-size:12.5px;color:var(--muted);margin-top:8px;min-height:16px;white-space:pre-wrap}
 .out.ok{color:var(--ok)}.out.err{color:var(--err)}
@@ -3543,7 +3500,7 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Панель настроек · Фама</title>
+<title>Панель настроек · Харука-Арч</title>
 <style>__STYLES__</style>
 </head>
 <body>
@@ -3563,7 +3520,7 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 </div>
 
 <div class="panel">
-  <h3>Сервер фамы</h3>
+  <h3>Сервер Харука-Арч</h3>
   <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один — «Норт».</p>
   <input id="serverName" placeholder="Норт">
   <button id="btnServer" type="button">Сохранить сервер</button>
@@ -3878,11 +3835,11 @@ STATUS_PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Статус · Фама</title>
+<title>Статус · Харука-Арч</title>
 <style>
-:root{--bg:#12141c;--card:#1e2432;--fg:#e7e9ef;--muted:#9aa1b7;--gold:#d8b45c;--line:#2e3446;--ok:#4caf6d;--err:#e07070}
+:root{--bg:#0d0a16;--card:#1d1530;--fg:#ece6f7;--muted:#a99cc4;--gold:#c9a2ff;--line:#352a4e;--ok:#4caf6d;--err:#e07070}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#232a3d,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:system-ui,sans-serif;padding:24px 14px 60px}
 main{max-width:680px;margin:0 auto}
 h1{color:var(--gold);font-size:26px;margin:0 0 16px}
 .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:10px 0;display:flex;gap:12px;align-items:center}
@@ -3891,7 +3848,7 @@ h1{color:var(--gold);font-size:26px;margin:0 0 16px}
 .dot.err{background:var(--err);box-shadow:0 0 8px rgba(224,112,112,.6)}
 .row b{display:block;font-size:14px}
 .row span{color:var(--muted);font-size:12.5px}
-a{color:#c9973f;text-decoration:none}
+a{color:#9b6bff;text-decoration:none}
 a:hover{text-decoration:underline}
 </style>
 </head>
@@ -3921,12 +3878,12 @@ async def handle_status(request):
         rows.append(status_row(False, "API /api/version", f"недоступен: {e!r}"))
     n_members = len(fam_state.get("members") or [])
     n_rels = len(fam_state.get("relations") or [])
-    rows.append(status_row(True, "Доска фамы", f"участников: {n_members} · связей: {n_rels} · обновлено: {fam_state.get('updated') or '—'}"))
+    rows.append(status_row(True, "Доска Харука-Арч", f"участников: {n_members} · связей: {n_rels} · обновлено: {fam_state.get('updated') or '—'}"))
     has_pass = fama_password_configured()
     rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "пароль не задан — редактор выключен"))
     host_d = settings_state.get("host_display") or ""
     rows.append(status_row(True, "Адрес на доске", host_d if host_d else "автоматический (из браузера)"))
-    rows.append(status_row(True, "Сервер фамы", fama_server_name()))
+    rows.append(status_row(True, "Сервер Харука-Арч", fama_server_name()))
     if fama_github_token():
         if fam_backup_state.get("last_error"):
             rows.append(status_row(False, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · ошибка: {fam_backup_state['last_error']}"))
