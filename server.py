@@ -1801,6 +1801,9 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1873,28 +1876,31 @@ def fama_check_password(password):
     return secrets.compare_digest(password, expected)
 
 def fama_server_name():
-    return settings_state.get("server_name") or "Норт"
+    return settings_state.get("server_name") or "North"
 
 # -------- роли фамы (единый список для карточек, редактора и Discord-бота) --------
 FAMA_ROLES = [
     {"id": "founder", "label": "👑 Founder", "group": "Основной состав",
-     "full": "Founder of the Haruka Arch family — основательница семьи Arch"},
+     "full": "Founder of the Haruka Arch family — основательница семьи Arch", "color": "#c9a2ff"},
     {"id": "deputy", "label": "👑 Deputy Founder", "group": "Основной состав",
-     "full": "Deputy Founder — заместитель основательницы семьи"},
+     "full": "Deputy Founder — заместитель основательницы семьи", "color": "#b388ff"},
     {"id": "husband", "label": "💍 Муж основательницы", "group": "Основной состав",
-     "full": "Муж основательницы семьи"},
+     "full": "Муж основательницы семьи", "color": "#9b6bff"},
     {"id": "haruka_arch", "label": "🌹 Haruka Arch", "group": "Основной состав",
-     "full": "Участник семьи, выше обычных Arch"},
+     "full": "Участник семьи, выше обычных Arch", "color": "#8a63d6"},
     {"id": "arch", "label": "🌹 Arch", "group": "Основной состав",
-     "full": "Участник семьи"},
+     "full": "Участник семьи", "color": "#6a3fb0"},
     {"id": "blade", "label": "🤝 Blade", "group": "Союзные семьи",
-     "full": "Союзная семья Blade — оставлена как память о существовании Блэйдов"},
+     "full": "Союзная семья Blade — оставлена как память о существовании Блэйдов", "color": "#5b3a9e"},
     {"id": "pharrell", "label": "🤝 Pharrell", "group": "Союзные семьи",
-     "full": "Союзная семья Pharrell"},
+     "full": "Союзная семья Pharrell", "color": "#4a2f6e"},
 ]
 
 def fama_role_full_map():
     return {r["label"]: r["full"] for r in FAMA_ROLES}
+
+def fama_role_color_map():
+    return {r["label"]: r.get("color", "#9b6bff") for r in FAMA_ROLES}
 
 def fama_roles_html():
     groups = []
@@ -2104,7 +2110,7 @@ FAMA_PAGE_STYLES = """
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Georgia,'Times New Roman',system-ui,serif}
-#board{position:fixed;inset:0;overflow:hidden;background:#472e70;color:var(--fg);box-shadow:none}
+#board{position:fixed;inset:0;overflow:hidden;background-color:#5a3a86;background-image:linear-gradient(180deg,rgba(245,235,255,.12),rgba(44,18,80,.26)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.20 0 0 0 0 0.55 0 0 0 0.6 0'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0.94 0 0 0 0 0.86 0 0 0 0 1.00 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23c)'/%3E%3Crect width='240' height='240' filter='url(%23l)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 25% 20%,rgba(120,70,190,.35),transparent 55%),radial-gradient(ellipse at 75% 75%,rgba(60,30,110,.42),transparent 60%);background-size:auto,240px 240px,cover,cover;box-shadow:inset 0 0 200px rgba(28,8,52,.60),inset 0 0 70px rgba(20,5,40,.45)}
 #threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .thread-glow{fill:none;opacity:.22;stroke-linecap:round}
 .thread-main{fill:none;opacity:.95;stroke-linecap:round}
@@ -2133,7 +2139,7 @@ body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:G
 .ava-tile{display:block;width:48px;height:48px;margin:0 auto 6px;border-radius:3px;background:linear-gradient(180deg,#8a63d6,#5b3a9e);color:#f4ecff;font-size:22px;line-height:48px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase}
 .mrow .ava-tile{width:28px;height:28px;line-height:28px;font-size:14px;font-weight:600}
 .photo b{display:block;font-size:13px;letter-spacing:.03em;color:#33204d;text-transform:uppercase;word-break:break-word;text-align:center}
-.photo .role{display:block;color:#6f5a92;font-size:9.5px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.09em;text-align:center}
+.photo .role{display:inline-block;color:#1a1029;font-size:9px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:2px 7px;border-radius:5px;font-weight:600}
 .photo .note{margin:6px 0 0;white-space:pre-line;font-size:10.5px;line-height:1.4;color:#291a40;max-height:7.6em;overflow:hidden;text-align:center}
 .hud{position:fixed;z-index:5;font-family:system-ui,sans-serif}
 .hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px}
@@ -2222,14 +2228,10 @@ FAMA_PAGE_JS = """
 var fam = __FAMA_DATA__;
 var SERVER_NAME = __SERVER_NAME__;
 var ROLE_FULL = __ROLES_JSON__;
+var ROLE_COLORS = __ROLE_COLORS_JSON__;
 var ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX'];
 
 function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
-
-document.getElementById('fam_title').textContent = fam.title || 'Харука-Арч';
-var tagEl = document.getElementById('tagline');
-tagEl.textContent = fam.tagline || '';
-if(!fam.tagline) tagEl.hidden = true;
 
 var infoDesc = el('p', 'desc'); infoDesc.textContent = fam.description || '';
 document.getElementById('infoText').appendChild(infoDesc);
@@ -2273,6 +2275,8 @@ function makeAvatar(name){
   if(m.role){
     var roleEl = el('span', 'role', m.role);
     if(ROLE_FULL[m.role]) roleEl.title = ROLE_FULL[m.role];
+    roleEl.style.background = ROLE_COLORS[m.role] || '#9b6bff';
+    roleEl.style.color = '#1a1029';
     d.appendChild(roleEl);
   }
   if(m.note){ d.appendChild(el('p', 'note', m.note)); }
@@ -2601,7 +2605,7 @@ function renderGate(){
   } else {
     gateStepEl.textContent = 'Шаг 2 из 2';
     gateTitle.textContent = 'На каком сервере Харука-Арч?';
-    gateSub.textContent = 'Пока доступен один сервер — «Норт». Другие появятся позже.';
+    gateSub.textContent = 'Пока доступен один сервер — «North». Другие появятся позже.';
     var sb = el('button', 'gate-opt on'); sb.type = 'button';
     sb.appendChild(el('span', 'ico', '⛏'));
     var st = el('span');
@@ -2707,11 +2711,6 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
   </div>
 </div>
 
-<div class="hud title">
-<h1 id="fam_title"></h1>
-<p class="tagline" id="tagline"></p>
-</div>
-
 <div class="hud searchbar">
 <div class="chips" id="filterChips"></div>
 </div>
@@ -2736,7 +2735,7 @@ __ROLES__
 <div class="hud legend" id="legend"></div>
 
 <div class="hud hint">
-Сервер Харука-Арч: <code id="srvName">Норт</code> · <a href="#" id="gateChange">сменить</a><br>
+Сервер Харука-Арч: <code id="srvName">North</code> · <a href="#" id="gateChange">сменить</a><br>
 Figura Cloud IP: <code>__HOST__</code><br>
 карточки можно перетаскивать и нажимать · <a href="/fama/edit">редактировать</a> · <a href="/status">статус</a>
 </div>
@@ -2764,6 +2763,7 @@ async def handle_root(request):
             .replace('__SERVER_NAME__', json.dumps(fama_server_name(), ensure_ascii=False))
             .replace('__ROLES__', fama_roles_html())
             .replace('__ROLES_JSON__', fam_json_safe(fama_role_full_map()))
+            .replace('__ROLE_COLORS_JSON__', fam_json_safe(fama_role_color_map()))
             .replace('__HOST__', html.escape(host)))
     return web.Response(text=page, content_type='text/html', charset='utf-8', headers={
         "Content-Security-Policy": FAMA_PAGE_CSP,
@@ -3319,6 +3319,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
   <div class="actions">
     <a class="btn" href="/?m=__MEMBER_ID__">Показать на доске</a>
     <a class="btn ghost" href="/">← на доску Харука-Арч</a>
+    <button class="btn ghost" id="btnCopyLink">Копировать ссылку</button>
   </div>
 </div>
 <div class="foot">Ссылка на профиль: <code>__PATH__</code></div>
@@ -3328,6 +3329,15 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
   var img = document.getElementById('avaImg');
   if(img){ img.onerror = function(){ img.style.display = 'none'; var t = document.getElementById('avaTile'); if(t){ t.hidden = false; } }; }
 })();
+document.getElementById('btnCopyLink').addEventListener('click', function(){
+  var url = window.location.href;
+  navigator.clipboard.writeText(url).then(function(){
+    var btn = document.getElementById('btnCopyLink');
+    var old = btn.textContent;
+    btn.textContent = 'Скопировано ✓';
+    setTimeout(function(){ btn.textContent = old; }, 1500);
+  });
+});
 </script>
 </body>
 </html>
@@ -3384,7 +3394,8 @@ async def handle_member(request):
     role_raw = (member.get("role") or "").strip()
     role_text = html.escape(role_raw)
     role_full = fama_role_full_map().get(role_raw) or ""
-    role_html = f'<div class="role">{role_text}</div>' if role_text else ""
+    role_color = fama_role_color_map().get(role_raw, "#9b6bff")
+    role_html = f'<div class="role" style="background:{html.escape(role_color)};color:#1a1029;padding:2px 8px;border-radius:6px;display:inline-block;">{role_text}</div>' if role_text else ""
     if role_full:
         role_html += f'<div class="role-full">{html.escape(role_full)}</div>'
     page = (MEMBER_PAGE_TEMPLATE
@@ -3521,8 +3532,8 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="panel">
   <h3>Сервер Харука-Арч</h3>
-  <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один — «Норт».</p>
-  <input id="serverName" placeholder="Норт">
+  <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один — «North».</p>
+  <input id="serverName" placeholder="North">
   <button id="btnServer" type="button">Сохранить сервер</button>
   <div class="info" id="curServer"></div>
   <div class="out" id="outServer"></div>
