@@ -1808,6 +1808,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1894,10 +1895,6 @@ FAMA_ROLES = [
      "full": "Участник семьи, выше обычных Arch", "color": "#8a63d6"},
     {"id": "arch", "label": "🌹 Arch", "group": "Основной состав",
      "full": "Участник семьи", "color": "#6a3fb0"},
-    {"id": "blade", "label": "🤝 Blade", "group": "Союзные семьи",
-     "full": "Союзная семья Blade — оставлена как память о существовании Блэйдов", "color": "#5b3a9e"},
-    {"id": "pharrell", "label": "🤝 Pharrell", "group": "Союзные семьи",
-     "full": "Союзная семья Pharrell", "color": "#4a2f6e"},
 ]
 
 def fama_role_full_map():
