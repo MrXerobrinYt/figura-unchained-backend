@@ -1810,6 +1810,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -2224,6 +2225,37 @@ html.m-mode .btns button{padding:7px 10px;font-size:12px}
 html.m-mode .legend{max-width:56vw;font-size:11px;padding:7px 12px}
 html.m-mode .panel-box,html.m-mode .members,html.m-mode .profile{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:56vh;border-radius:16px}
 @media(max-width:640px){.title h1{font-size:20px}.photo{width:110px}.photo b{font-size:10px}.legend{max-width:56vw;font-size:10px;padding:6px 10px}}
+/* ---------- тосты-уведомления ---------- */
+#toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:rgba(20,14,30,.92);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.5);backdrop-filter:blur(10px);font-size:13px;min-width:220px;max-width:340px;text-align:center;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .25s;pointer-events:auto}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-color:var(--ok);color:#dcfce8}
+.toast.err{border-color:var(--err);color:#fecaca}
+.toast.warn{border-color:#d97706;color:#fef3c7}
+
+/* ---------- анимация появления карточек ---------- */
+.photo{animation:fadeIn .4s ease-out both}
+@keyframes fadeIn{from{opacity:0;transform:scale(.92) rotate(var(--tilt,0deg))}to{opacity:1;transform:scale(1) rotate(var(--tilt,0deg))}}
+
+/* ---------- быстрая кнопка добавления ---------- */
+#btnAddMember{background:var(--accent);color:#140c24;border:0;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+#btnAddMember:hover{background:#a78bfa;transform:translateY(-1px);box-shadow:0 8px 20px rgba(139,92,246,.3)}
+#btnAddMember:active{transform:translateY(0)}
+#btnAddMember.hidden{display:none}
+
+/* ---------- форма быстрого добавления ---------- */
+#quick-add-form{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:150;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 28px;box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(14px);min-width:300px;display:none}
+#quick-add-form.hidden{display:none}
+#quick-add-form h3{margin:0 0 16px;font-size:18px;color:var(--gold)}
+#quick-add-form .label{display:block;color:var(--muted);font-size:11px;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+#quick-add-form input{width:100%;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;margin:0}
+#quick-add-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+#quick-add-form .actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+#quick-add-form button{padding:8px 16px;font-size:13px}
+#quick-add-close{background:none;border:0;border-radius:10px;color:var(--muted);cursor:pointer;position:absolute;top:10px;right:10px;font-size:20px;line-height:1}
+#quick-add-close:hover{color:var(--fg);background:rgba(255,255,255,.06)}
+
+
 """
 
 FAMA_PAGE_JS = """
@@ -2492,6 +2524,97 @@ btnSavePos.addEventListener('click', function(){
     .catch(function(){ btnSavePos.textContent = 'Сеть недоступна'; setTimeout(function(){ btnSavePos.textContent = 'Сохранить позиции'; }, 2000); });
 });
 
+/* ---------- тосты-уведомления ---------- */
+var toastContainer = document.getElementById('toast-container');
+function showToast(text, type){
+  if(!toastContainer) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || '');
+  t.textContent = text;
+  toastContainer.appendChild(t);
+  requestAnimationFrame(function(){ t.classList.add('show'); });
+  setTimeout(function(){
+    t.classList.remove('show');
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 250);
+  }, 3000);
+}
+
+/* ---------- быстрое добавление участника с доски ---------- */
+var btnAddMember = document.getElementById('btnAddMember');
+var quickForm = document.getElementById('quick-add-form');
+var qaClose = document.getElementById('quick-add-close');
+var qaCancel = document.getElementById('qa-cancel');
+var qaSave = document.getElementById('qa-save');
+var qaName = document.getElementById('qa-name');
+var qaRole = document.getElementById('qa-role');
+
+function openQuickAdd(){
+  qaName.value = '';
+  qaRole.innerHTML = '';
+  (fam.roles || []).forEach(function(r){
+    var o = document.createElement('option');
+    o.value = r.label;
+    o.textContent = r.label;
+    qaRole.appendChild(o);
+  });
+  quickForm.classList.remove('hidden');
+  qaName.focus();
+}
+function closeQuickAdd(){
+  quickForm.classList.add('hidden');
+}
+btnAddMember.addEventListener('click', openQuickAdd);
+qaClose.addEventListener('click', closeQuickAdd);
+qaCancel.addEventListener('click', closeQuickAdd);
+
+qaSave.addEventListener('click', function(){
+  var name = qaName.value.trim();
+  if(!name){ showToast('Введите ник', 'err'); return; }
+  var role = qaRole.value || '';
+  var pass = null;
+  try { pass = localStorage.getItem('famaPass'); } catch(err) {}
+  if(!pass){ pass = prompt('Пароль редактора:'); if(pass === null) return; }
+  qaSave.textContent = 'Добавление...';
+  qaSave.disabled = true;
+  var newMember = {
+    id: 'new-' + Date.now(),
+    name: name,
+    role: role,
+    note: '',
+    birth: '',
+    generation: 0,
+    x: Math.round(10 + Math.random() * 76),
+    y: Math.round(10 + Math.random() * 76)
+  };
+  var data = {
+    title: fam.title, tagline: fam.tagline, description: fam.description,
+    members: (fam.members || []).concat([newMember]),
+    threads: fam.threads || [],
+    relations: fam.relations || []
+  };
+  fetch('/fama/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass, data: data }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
+    .then(function(r){
+      qaSave.textContent = 'Добавить';
+      qaSave.disabled = false;
+      if(r.status === 200){
+        try { localStorage.setItem('famaPass', pass); } catch(err) {}
+        closeQuickAdd();
+        location.reload();
+      } else if(r.status === 403){
+        showToast('Неверный пароль', 'err');
+        try { localStorage.removeItem('famaPass'); } catch(err) {}
+      } else {
+        showToast('Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status), 'err');
+      }
+    })
+    .catch(function(){ qaSave.textContent = 'Добавить'; qaSave.disabled = false; showToast('Сеть недоступна', 'err'); });
+});
+
+window.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && !quickForm.classList.contains('hidden')) closeQuickAdd();
+});
+
 var legend = document.getElementById('legend');
 (fam.threads || []).forEach(function(t){
   var item = el('span');
@@ -2682,6 +2805,22 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <button id="btnSavePos" type="button" hidden>Сохранить позиции</button>
 <button id="btnMembers" type="button">Участники</button>
 <button id="btnInfo" type="button">О Харука-Арч</button>
+</div><button id="btnAddMember" type="button">+ Участник</button>
+</div>
+
+<div id="toast-container"></div>
+
+<div id="quick-add-form" class="hidden">
+  <button id="quick-add-close" type="button">×</button>
+  <h3>Новый участник</h3>
+  <div class="label">Ник</div>
+  <input id="qa-name" type="text" placeholder="Имя на доске">
+  <div class="label">Роль</div>
+  <select id="qa-role"></select>
+  <div class="actions">
+    <button id="qa-cancel" type="button" class="ghost">Отмена</button>
+    <button id="qa-save" type="button">Добавить</button>
+  </div>
 </div>
 
 <div class="hud panel-box" id="infoPanel" hidden>
