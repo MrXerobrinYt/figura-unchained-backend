@@ -1811,6 +1811,7 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
+# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -2839,7 +2840,6 @@ __ROLES__
 <div class="hud hint">
 Сервер Харука-Арч: <code id="srvName">North</code> · <a href="#" id="gateChange">сменить</a><br>
 Figura Cloud IP: <code>__HOST__</code><br>
-карточки можно перетаскивать и нажимать · <a href="/fama/edit">редактировать</a> · <a href="/status">статус</a>
 </div>
 
 <script>__JS__</script>
