@@ -18,8 +18,8 @@ __pycache__/
 # Runtime and Local Files
 # ========================
 .env
-# Данные фамы (эфемерны на Render, стартовые — из корневого fam.json)
-data/fam.json
+# Данные фамы — fam.json коммитится (участники заполняются на доске)
+# data/fam.json
 data/avatars/
 data/users.db
 data/server.log
