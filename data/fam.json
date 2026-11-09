@@ -1,0 +1,102 @@
+{
+  "title": "Харука-Арч",
+  "tagline": "Доска нашей семьи",
+  "description": "Доска семьи Харука-Арч. Отредактируйте текст на странице /fama/edit",
+  "threads": [
+    {
+      "id": "married",
+      "label": "Женаты",
+      "color": "#e05252"
+    },
+    {
+      "id": "kin",
+      "label": "Кровь / родство",
+      "color": "#c9973f"
+    },
+    {
+      "id": "sibling",
+      "label": "Братья / сёстры",
+      "color": "#5b8def"
+    },
+    {
+      "id": "friend",
+      "label": "Друзья",
+      "color": "#4caf6d"
+    }
+  ],
+  "members": [
+    {
+      "id": "7375519914790802",
+      "name": "Ayame Arch",
+      "role": "👑 Founder",
+      "note": "основательница семьи Arch",
+      "birth": "",
+      "generation": 0,
+      "x": 30.0,
+      "y": 24.0
+    },
+    {
+      "id": "4292900543774186",
+      "name": "Андрей Харука-Хач",
+      "role": "👑 Deputy Founder",
+      "note": "@morOz0v",
+      "birth": "",
+      "generation": 0,
+      "x": 68.0,
+      "y": 58.0
+    },
+    {
+      "id": "0667303639526487",
+      "name": "Мавроди Харука-Арч",
+      "role": "👑 Deputy Founder",
+      "note": "@Din1ors",
+      "birth": "",
+      "generation": 0,
+      "x": 12.0,
+      "y": 62.0
+    },
+    {
+      "id": "2465206723369539",
+      "name": "Кристофер Харука-Арч",
+      "role": "👑 Deputy Founder",
+      "note": "@FellSanuya",
+      "birth": "",
+      "generation": 0,
+      "x": 50.0,
+      "y": 30.0
+    },
+    {
+      "id": "1209715361179395",
+      "name": "Марди Гуфф-Арч",
+      "role": "💍 Муж основательницы",
+      "note": "@MrMagmust",
+      "birth": "",
+      "generation": 0,
+      "x": 70.0,
+      "y": 40.0
+    }
+  ],
+  "relations": [
+    {
+      "from": "Ayame Arch",
+      "to": "Марди Гуфф-Арч",
+      "type": "married"
+    },
+    {
+      "from": "Андрей Харука-Хач",
+      "to": "Ayame Arch",
+      "type": "kin"
+    },
+    {
+      "from": "Мавроди Харука-Арч",
+      "to": "Ayame Arch",
+      "type": "kin"
+    },
+    {
+      "from": "Кристофер Харука-Арч",
+      "to": "Ayame Arch",
+      "type": "kin"
+    }
+  ],
+  "updated": ""
+}
