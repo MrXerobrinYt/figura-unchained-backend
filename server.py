@@ -1808,10 +1808,6 @@ FAMA_JSON_PLACEHOLDER = '"__FAMA_DATA_PLACEHOLDER__"'
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
 # ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
-# ======================== Страницы фамы ========================
 def fam_json_safe(data):
     return json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
 
@@ -1874,7 +1870,7 @@ def fama_check_password(password):
     pw_hash = fama_password_hash_value()
     if pw_hash.startswith("$2"):
         try:
-            # bcrypt учитывает только первые 72 байта — обрезаем, чтобы не падать на длинных паролях
+            # bcrypt учитывает только первые 72 байта - обрезаем, чтобы не падать на длинных паролях
             return bcrypt.checkpw(password.encode("utf-8")[:72], pw_hash.encode("ascii"))
         except (ValueError, TypeError):
             return False
@@ -1889,9 +1885,9 @@ def fama_server_name():
 # -------- роли фамы (единый список для карточек, редактора и Discord-бота) --------
 FAMA_ROLES = [
     {"id": "founder", "label": "👑 Founder", "group": "Основной состав",
-     "full": "Founder of the Haruka Arch family — основательница семьи Arch", "color": "#c9a2ff"},
+     "full": "Founder of the Haruka Arch family - основательница семьи Arch", "color": "#c9a2ff"},
     {"id": "deputy", "label": "👑 Deputy Founder", "group": "Основной состав",
-     "full": "Deputy Founder — заместитель основательницы семьи", "color": "#b388ff"},
+     "full": "Deputy Founder - заместитель основательницы семьи", "color": "#b388ff"},
     {"id": "husband", "label": "💍 Муж основательницы", "group": "Основной состав",
      "full": "Муж основательницы семьи", "color": "#9b6bff"},
     {"id": "haruka_arch", "label": "🌹 Haruka Arch", "group": "Основной состав",
@@ -1954,9 +1950,9 @@ async def fama_add_member(name, role, note="", discord_id=""):
             None,
         )
         if existing:
-            return False, f"Ник «{name}» уже есть на доске — выбери другой ник.", ""
+            return False, f'Ник "{name}" уже есть на доске - выбери другой ник.', ""
         if len(members) >= 200:
-            return False, "На доске уже 200 участников — больше нельзя.", ""
+            return False, "На доске уже 200 участников - больше нельзя.", ""
         member = {
             "id": fam_member_uid(name),
             "name": name,
@@ -2110,114 +2106,137 @@ def too_many_attempts(ip):
 
 
 FAMA_PAGE_STYLES = """
-:root{--bg:#0a0814;--panel:rgba(22,16,36,.85);--fg:#e9e7f2;--muted:#a39bc2;--gold:#d8b4ff;--line:#332454;--accent:#8b5cf6;--ink:#110b22;--ok:#4caf6d;--err:#e07070}
+:root{--bg:#0a080f;--panel:rgba(18,14,30,.82);--fg:#e8e4f2;--muted:#9a8cc6;--gold:#d8b4ff;--line:#2d2442;--accent:#8b5cf6;--accent-glow:#c084fc;--ink:#0f0a1a;--ok:#4caf6d;--err:#e07070}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;overflow:hidden;background:radial-gradient(1300px 700px at 20% 10%,#2a1d4a 0%,transparent 45%),radial-gradient(900px 600px at 80% 90%,#1a1030 0%,transparent 40%),var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",system-ui,sans-serif}
-#board{position:fixed;inset:0;overflow:hidden;background:#2d1f4a;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.33 0 0 0 0 0.16 0 0 0 0 0.5 0 0 0 0.58 0'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.45' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.84 0 0 0 0 0.98 0 0 0 0.33 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23c)'/%3E%3Crect width='240' height='240' filter='url(%23l)'/%3E%3C/svg%3E");background-size:auto,240px 240px,cover;box-shadow:inset 0 0 120px rgba(4,2,14,.55)}
+body{margin:0;overflow:hidden;background:radial-gradient(1400px 800px at 15% 10%,#2d1f4a 0%,transparent 45%),radial-gradient(900px 700px at 85% 90%,#1a1030 0%,transparent 40%),var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",system-ui,sans-serif}
+#board{position:fixed;inset:0;overflow:hidden;background:#1a102e;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='none' stroke='rgba(255,255,255,.02)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 20% 25%,rgba(139,92,246,.15),transparent 55%),radial-gradient(ellipse at 80% 75%,rgba(217,70,239,.12),transparent 50%);background-size:40px 40px,cover,cover;box-shadow:inset 0 0 100px rgba(2,0,10,.4)}
 #threads{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
-.thread-glow{fill:none;opacity:.2;stroke-linecap:round}
-.thread-main{fill:none;opacity:.92;stroke-linecap:round}
+.thread-glow{fill:none;opacity:.18;stroke-linecap:round}
+.thread-main{fill:none;opacity:.95;stroke-linecap:round}
 .knot{opacity:.9}
-#threads path.cold,#threads circle.cold{opacity:.08 !important}
+#threads path.cold,#threads circle.cold{opacity:.05 !important}
 #threads path.thread-main.hot{opacity:1}
-#threads path.thread-glow.hot{opacity:.45}
+#threads path.thread-glow.hot{opacity:.5}
 #threads circle.hot{opacity:1}
-.profile{top:12px;right:12px;width:min(370px,92vw);max-height:74vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px 18px;box-shadow:0 24px 48px rgba(0,0,0,.55);backdrop-filter:blur(14px);font-family:system-ui,sans-serif}
-.profile .ph{display:flex;gap:14px;align-items:center;position:relative}
-.profile .ph img{width:56px;height:56px;image-rendering:pixelated;border-radius:8px;background:#cbbce8;flex:0 0 auto;box-shadow:0 4px 12px rgba(0,0,0,.35)}
-.profile .ava-tile{width:56px;height:56px;line-height:56px;font-size:26px;flex:0 0 auto}
+.profile{top:12px;right:12px;width:min(380px,92vw);max-height:75vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px 20px;box-shadow:0 30px 60px rgba(0,0,0,.6);backdrop-filter:blur(20px);font-family:system-ui,sans-serif;animation:fadeIn .5s ease-out}
+.profile .ph{display:flex;gap:14px;align-items:center;position:relative;margin-bottom:14px}
+.profile .ph img{width:56px;height:56px;image-rendering:pixelated;border-radius:10px;background:#cbbce8;flex:0 0 auto;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.profile .ava-tile{width:56px;height:56px;line-height:56px;font-size:26px;flex:0 0 auto;background:linear-gradient(135deg,#8b5cf6,#d946ef);color:#fff;text-align:center;font-weight:700}
 .profile h3{margin:0;color:var(--gold);font-size:20px;word-break:break-word}
-.profile .role{color:#1a0e30;font-size:10px;text-transform:uppercase;letter-spacing:.07em;margin-top:5px;padding:3px 11px;border-radius:8px;display:inline-block;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-weight:600}
+.profile .role{color:#170b26;font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;padding:3px 12px;border-radius:10px;display:inline-block;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);font-weight:600}
 .profile .role-full{display:block;color:var(--muted);font-size:10.5px;line-height:1.45;margin-top:3px;max-width:440px}
-.profile .note{white-space:pre-line;font-size:13.5px;line-height:1.65;color:var(--fg);margin:12px 0 0}
+.profile .note{white-space:pre-line;font-size:14px;line-height:1.65;color:var(--fg);margin:12px 0 0}
 .profile .rel{display:flex;gap:10px;align-items:center;font-size:13.5px;padding:7px 0;border-top:1px solid var(--line);color:var(--fg)}
 .profile .rel .sw{width:24px;height:3px;border-radius:2px;flex:0 0 auto}
-.profile .close{position:absolute;top:10px;right:10px;background:none;border:1px solid var(--line);border-radius:10px;color:var(--muted);width:30px;height:30px;cursor:pointer;font-size:14px;line-height:1;transition:all .15s}
+.profile .close{position:absolute;top:12px;right:12px;background:none;border:1px solid var(--line);border-radius:12px;color:var(--muted);width:32px;height:32px;cursor:pointer;font-size:15px;line-height:1;transition:all .15s}
 .profile .close:hover{color:var(--fg);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2)}
 .profile .none{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .profile .meta-line{font-size:11.5px;color:var(--muted);margin:3px 0 0}
-.profile .linkrow{display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-.profile .linkrow input{flex:1;min-width:0;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:8px 10px}
-.profile .linkrow button{background:var(--gold);color:#140c24;border:0;border-radius:10px;padding:0 14px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s}
-.profile .linkrow button:hover{background:#e0c4ff;transform:translateY(-1px)}
-.photo{position:absolute;width:150px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#2d1f44;border-radius:12px;padding:11px 12px 13px;box-shadow:0 20px 40px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.1);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;backdrop-filter:blur(8px);transition:all .2s}
-.photo.dragging{cursor:grabbing;z-index:4;box-shadow:0 28px 56px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.2);transform:rotate(var(--tilt,0deg)) scale(1.03)}
-.photo::before{content:'';position:absolute;top:-9px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:58px;height:16px;background:rgba(201,162,255,.25);border:1px solid rgba(255,255,255,.15);box-shadow:0 2px 5px rgba(0,0,0,.3);border-radius:7px}
-.photo img{display:block;width:44px;height:44px;margin:0 auto 6px;image-rendering:pixelated;border-radius:5px;background:#cbbce8;box-shadow:0 1px 3px rgba(0,0,0,.3)}
-.ava-tile{display:block;width:44px;height:44px;margin:0 auto 6px;border-radius:5px;background:linear-gradient(180deg,#8b5cf6,#6d28d9);color:#f4ecff;font-size:20px;line-height:44px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase}
+.profile .linkrow{display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.profile .linkrow input{flex:1;min-width:0;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:9px 12px}
+.profile .linkrow input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+.profile .linkrow button{background:var(--accent);color:#0a080f;border:0;border-radius:10px;padding:0 16px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s}
+.profile .linkrow button:hover{background:#a78bfa;transform:translateY(-1px);box-shadow:0 8px 20px rgba(139,92,246,.3)}
+.photo{position:absolute;width:150px;z-index:2;transform:rotate(var(--tilt,0deg));transform-origin:50% -30px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);color:#2d1f44;border-radius:14px;padding:12px 13px 14px;box-shadow:0 24px 48px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.08);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;backdrop-filter:blur(10px);transition:all .2s;animation:fadeIn .5s ease-out both}
+.photo.dragging{cursor:grabbing;z-index:4;box-shadow:0 32px 64px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.15);transform:rotate(var(--tilt,0deg)) scale(1.04)}
+.photo::before{content:'';position:absolute;top:-10px;left:50%;transform:translateX(-50%) rotate(var(--tape,-2deg));width:58px;height:16px;background:rgba(201,162,255,.2);border:1px solid rgba(255,255,255,.15);box-shadow:0 2px 5px rgba(0,0,0,.3);border-radius:7px}
+.photo img{display:block;width:44px;height:44px;margin:0 auto 7px;image-rendering:pixelated;border-radius:6px;background:#cbbce8;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.ava-tile{display:block;width:44px;height:44px;margin:0 auto 7px;border-radius:6px;background:linear-gradient(135deg,#8b5cf6,#d946ef);color:#f4ecff;font-size:20px;line-height:44px;text-align:center;font-family:system-ui,sans-serif;text-transform:uppercase;font-weight:700}
 .mrow .ava-tile{width:26px;height:26px;line-height:26px;font-size:14px;font-weight:600}
 .photo b{display:block;font-size:12px;letter-spacing:.02em;color:#2d1f44;text-transform:uppercase;word-break:break-word;text-align:center;margin:3px 0 2px}
-.photo .role{display:inline-block;color:#1a0e30;font-size:8.5px;margin:1px 0 3px;text-transform:uppercase;letter-spacing:.05em;text-align:center;padding:1.5px 6px;border-radius:4px;font-weight:700}
+.photo .role{display:inline-block;color:#170b26;font-size:8.5px;margin:1px 0 3px;text-transform:uppercase;letter-spacing:.05em;text-align:center;padding:1.5px 7px;border-radius:5px;font-weight:800}
 .photo .note{margin:5px 0 0;white-space:pre-line;font-size:9.5px;line-height:1.4;color:#2d1f44;max-height:6.5em;overflow:hidden;text-align:center}
 .photo .card-badge{position:absolute;top:4px;left:5px;background:rgba(36,18,60,.85);color:#f2e8ff;font:9px/1.5 system-ui,sans-serif;border-radius:5px;padding:0 5px;letter-spacing:.05em;pointer-events:none}
 .photo .card-year{position:absolute;top:4px;right:5px;background:rgba(255,255,255,.55);color:#4a2f6e;font:9px/1.5 system-ui,sans-serif;border-radius:5px;padding:0 5px;pointer-events:none}
 .hud{position:fixed;z-index:50;font-family:system-ui,sans-serif}
-.hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:11px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
-.hud button:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#e6e2f0;transform:translateY(-1px)}
-.hud button.on{background:var(--gold);color:#140c24;border-color:var(--gold);box-shadow:0 0 0 3px rgba(139,92,246,.2)}
+.hud button{background:var(--panel);color:var(--gold);border:1px solid var(--line);border-radius:12px;padding:11px 18px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;backdrop-filter:blur(6px)}
+.hud button:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#e8e4f2;transform:translateY(-1px)}
+.hud button.on{background:var(--accent);color:#0a080f;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.2)}
 .hud button:active{transform:translateY(0)}
 .btns{top:12px;right:12px;display:flex;gap:8px}
-.panel-box{top:60px;right:12px;width:min(370px,90vw);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 24px 48px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
+.panel-box{top:60px;right:12px;width:min(370px,90vw);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px;box-shadow:0 30px 60px rgba(0,0,0,.6);backdrop-filter:blur(20px)}
 .panel-box .desc{white-space:pre-line;line-height:1.6;font-size:13.5px;color:var(--fg)}
-.panel-box .roles{margin-top:14px;border-top:1px solid var(--line);padding-top:10px;max-height:34vh;overflow:auto}
-.panel-box .roles h4{margin:10px 0 6px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.panel-box .roles{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;max-height:32vh;overflow:auto}
+.panel-box .roles h4{margin:10px 0 6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .panel-box .roles h4:first-child{margin-top:0}
-.panel-box .roles ul{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.panel-box .roles ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .panel-box .roles li{font-size:13px;line-height:1.4;color:var(--fg)}
-.panel-box .roles li b{color:var(--gold);font-weight:600;display:block}
+.panel-box .roles li b{color:var(--gold);font-weight:700;display:block}
 .panel-box .roles li span{color:var(--muted);font-size:11.5px}
-.panel-box .meta{margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.6}
+.panel-box .meta{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.6}
 .panel-box .meta a{color:var(--accent);text-decoration:none}
 .panel-box .meta a:hover{text-decoration:underline}
-.panel-box .meta code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg)}
-.members{top:60px;right:12px;width:min(350px,90vw);max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 16px;box-shadow:0 24px 48px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
-.mrow{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.panel-box .meta code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:7px;padding:1px 7px;color:var(--fg)}
+.members{top:60px;right:12px;width:min(360px,90vw);max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 18px;box-shadow:0 30px 60px rgba(0,0,0,.6);backdrop-filter:blur(20px)}
+.mrow{padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
 .mrow:last-child{border-bottom:0}
-.mrow img{width:26px;height:26px;image-rendering:pixelated;border-radius:5px;flex:0 0 auto;margin-top:2px}
+.mrow img{width:26px;height:26px;image-rendering:pixelated;border-radius:6px;flex:0 0 auto;margin-top:2px}
 .mrow .who{min-width:0}
 .mrow b{color:var(--gold);font-size:14px}
 .mrow .role{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
 .mrow .note{font-size:12px;margin:3px 0 0;white-space:pre-line;color:var(--fg)}
-.legend{bottom:12px;left:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:50vw;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 14px;font-size:12px;color:var(--muted);backdrop-filter:blur(10px)}
+.legend{bottom:12px;left:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:50vw;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 14px;font-size:12px;color:var(--muted);backdrop-filter:blur(12px)}
 .legend .sw{display:inline-block;width:24px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
-.hint{bottom:12px;right:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 14px;font-size:11.5px;color:var(--muted);text-align:right;line-height:1.6;backdrop-filter:blur(10px)}
+.hint{bottom:12px;right:12px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 14px;font-size:11.5px;color:var(--muted);text-align:right;line-height:1.6;backdrop-filter:blur(12px)}
 .hint a{color:var(--accent);text-decoration:none}
 .hint a:hover{text-decoration:underline}
-.hint code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--fg)}
+.hint code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:7px;padding:1px 6px;color:var(--fg)}
 #btnSavePos{background:#2a3d2c;color:#8fd6a0;border-color:#3c5a40}
 #btnSavePos:hover{background:#35503a}
+#btnAddMember{background:var(--accent);color:#0a080f;border:0;border-radius:12px;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+#btnAddMember:hover{background:#a78bfa;transform:translateY(-1px);box-shadow:0 8px 20px rgba(139,92,246,.3)}
+#btnAddMember:active{transform:translateY(0)}
+#btnAddMember.hidden{display:none}
 .photo .card-badge{position:absolute;top:4px;left:5px;background:rgba(36,18,60,.85);color:#f2e8ff;font:9px/1.5 system-ui,sans-serif;border-radius:5px;padding:0 5px;letter-spacing:.05em;pointer-events:none}
 .photo .card-year{position:absolute;top:4px;right:5px;background:rgba(255,255,255,.55);color:#4a2f6e;font:9px/1.5 system-ui,sans-serif;border-radius:5px;padding:0 5px;pointer-events:none}
 .profile .meta-line{font-size:12px;color:var(--muted);margin:3px 0 0}
-.profile .linkrow{display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-.profile .linkrow input{flex:1;min-width:0;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:8px 10px}
-.profile .linkrow button{background:var(--gold);color:#140c24;border:0;border-radius:10px;padding:0 14px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s}
-.profile .linkrow button:hover{background:#e0c4ff;transform:translateY(-1px)}
+.profile .linkrow{display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.profile .linkrow input{flex:1;min-width:0;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:11.5px system-ui,sans-serif;padding:9px 12px}
+.profile .linkrow button{background:var(--accent);color:#0a080f;border:0;border-radius:10px;padding:0 16px;font:12px system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s}
+.profile .linkrow button:hover{background:#a78bfa;transform:translateY(-1px)}
 /* ---------- стартовое окно ---------- */
-#gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(16,10,30,.82);backdrop-filter:blur(10px);font-family:system-ui,sans-serif}
+#gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(12,8,24,.85);backdrop-filter:blur(14px);font-family:system-ui,sans-serif}
 #gate[hidden]{display:none}
-.gate-card{width:min(500px,92vw);background:linear-gradient(180deg,#2d2048,#201836);color:#e8e4f0;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:30px 30px 26px;box-shadow:0 35px 90px rgba(0,0,0,.6)}
-.gate-step{font-size:11px;color:#8b5cf6;letter-spacing:.14em;text-transform:uppercase}
-.gate-card h2{margin:6px 0 6px;font-size:24px;letter-spacing:.01em;color:#f2e8ff}
-.gate-card p{margin:0 0 22px;color:#b8a8d0;font-size:14px;line-height:1.6}
-.gate-choices{display:grid;gap:10px}
-.gate-opt{display:flex;gap:14px;align-items:center;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.03);cursor:pointer;font:inherit;color:inherit;text-align:left;transition:all .2s}
-.gate-opt:hover{border-color:rgba(139,92,246,.45);background:rgba(255,255,255,.08)}
+.gate-card{width:min(500px,92vw);background:linear-gradient(180deg,#251b3a,#1a102e);color:#e8e4f2;border:1px solid rgba(255,255,255,.06);border-radius:24px;padding:34px 34px 30px;box-shadow:0 40px 100px rgba(0,0,0,.7)}
+.gate-step{font-size:11px;color:#8b5cf6;letter-spacing:.16em;text-transform:uppercase}
+.gate-card h2{margin:6px 0 8px;font-size:26px;letter-spacing:.01em;color:#f2e8ff}
+.gate-card p{margin:0 0 24px;color:#b8a8d0;font-size:15px;line-height:1.6}
+.gate-choices{display:grid;gap:12px}
+.gate-opt{display:flex;gap:14px;align-items:center;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px 18px;background:rgba(255,255,255,.02);cursor:pointer;font:inherit;color:inherit;text-align:left;transition:all .2s}
+.gate-opt:hover{border-color:rgba(139,92,246,.5);background:rgba(255,255,255,.06)}
 .gate-opt.on{border-color:#8b5cf6;background:rgba(139,92,246,.12);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
-.gate-opt .ico{font-size:26px;flex:0 0 auto;width:34px;text-align:center}
-.gate-opt b{display:block;font-size:16px;color:#f2e8ff}
-.gate-opt span{display:block;font-size:12.5px;color:#b8a8d0;margin-top:1px}
-.gate-next{margin-top:20px;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.gate-next button{background:var(--accent);color:#140c24;border:0;border-radius:12px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
-.gate-next button:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(139,92,246,.3)}
+.gate-opt .ico{font-size:28px;flex:0 0 auto;width:36px;text-align:center}
+.gate-opt b{display:block;font-size:17px;color:#f2e8ff}
+.gate-opt span{display:block;font-size:13px;color:#b8a8d0;margin-top:1px}
+.gate-next{margin-top:22px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gate-next button{background:var(--accent);color:#0a080f;border:0;border-radius:14px;padding:12px 26px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.gate-next button:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(139,92,246,.35)}
 .gate-next button:disabled{opacity:.45;cursor:default}
-.gate-back{background:none !important;border:0;color:var(--muted)!important;cursor:pointer;font-size:12.5px;text-decoration:underline;padding:0 !important}
+.gate-back{background:none !important;border:0;color:var(--muted)!important;cursor:pointer;font-size:13px;text-decoration:underline;padding:0 !important}
 /* ---------- фильтры ---------- */
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted);font:11.5px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
-.chip.on{color:#140c24;background:var(--gold);border-color:var(--gold);font-weight:600}
+.chip.on{color:#0a080f;background:var(--gold);border-color:var(--gold);font-weight:600}
 .photo.muted{opacity:.4;filter:grayscale(.45)}
 #threads path.muted,#threads circle.muted{opacity:.03 !important}
+/* ---------- тосты ---------- */
+#toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:rgba(20,14,30,.94);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.5);backdrop-filter:blur(10px);font-size:13px;min-width:220px;max-width:340px;text-align:center;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .25s;pointer-events:auto}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-color:var(--ok);color:#dcfce8}
+.toast.err{border-color:var(--err);color:#fecaca}
+.toast.warn{border-color:#d97706;color:#fef3c7}
+/* ---------- форма быстрого добавления ---------- */
+#quick-add-form{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:150;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(14px);min-width:300px;max-width:90vw;display:none;animation:fadeIn .3s ease-out}
+#quick-add-form.hidden{display:none}
+#quick-add-form h3{margin:0 0 18px;font-size:19px;color:var(--gold)}
+#quick-add-form .label{display:block;color:var(--muted);font-size:11px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+#quick-add-form input,#quick-add-form select{width:100%;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;margin:0}
+#quick-add-form input:focus,#quick-add-form select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+#quick-add-form .actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end}
+#quick-add-form button{padding:9px 18px;font-size:13px}
+#quick-add-close{background:none;border:0;border-radius:10px;color:var(--muted);cursor:pointer;position:absolute;top:12px;right:12px;font-size:20px;line-height:1;transition:all .15s}
+#quick-add-close:hover{color:var(--fg);background:rgba(255,255,255,.06)}
 /* ---------- мобильный режим ---------- */
 html.m-mode .photo{width:116px}
 html.m-mode .photo b{font-size:10.5px}
@@ -2226,37 +2245,7 @@ html.m-mode .btns button{padding:7px 10px;font-size:12px}
 html.m-mode .legend{max-width:56vw;font-size:11px;padding:7px 12px}
 html.m-mode .panel-box,html.m-mode .members,html.m-mode .profile{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:56vh;border-radius:16px}
 @media(max-width:640px){.title h1{font-size:20px}.photo{width:110px}.photo b{font-size:10px}.legend{max-width:56vw;font-size:10px;padding:6px 10px}}
-/* ---------- тосты-уведомления ---------- */
-#toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{background:rgba(20,14,30,.92);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.5);backdrop-filter:blur(10px);font-size:13px;min-width:220px;max-width:340px;text-align:center;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .25s;pointer-events:auto}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast.ok{border-color:var(--ok);color:#dcfce8}
-.toast.err{border-color:var(--err);color:#fecaca}
-.toast.warn{border-color:#d97706;color:#fef3c7}
-
-/* ---------- анимация появления карточек ---------- */
-.photo{animation:fadeIn .4s ease-out both}
 @keyframes fadeIn{from{opacity:0;transform:scale(.92) rotate(var(--tilt,0deg))}to{opacity:1;transform:scale(1) rotate(var(--tilt,0deg))}}
-
-/* ---------- быстрая кнопка добавления ---------- */
-#btnAddMember{background:var(--accent);color:#140c24;border:0;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
-#btnAddMember:hover{background:#a78bfa;transform:translateY(-1px);box-shadow:0 8px 20px rgba(139,92,246,.3)}
-#btnAddMember:active{transform:translateY(0)}
-#btnAddMember.hidden{display:none}
-
-/* ---------- форма быстрого добавления ---------- */
-#quick-add-form{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:150;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 28px;box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(14px);min-width:300px;display:none}
-#quick-add-form.hidden{display:none}
-#quick-add-form h3{margin:0 0 16px;font-size:18px;color:var(--gold)}
-#quick-add-form .label{display:block;color:var(--muted);font-size:11px;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
-#quick-add-form input{width:100%;background:rgba(20,14,30,.5);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;margin:0}
-#quick-add-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
-#quick-add-form .actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
-#quick-add-form button{padding:8px 16px;font-size:13px}
-#quick-add-close{background:none;border:0;border-radius:10px;color:var(--muted);cursor:pointer;position:absolute;top:10px;right:10px;font-size:20px;line-height:1}
-#quick-add-close:hover{color:var(--fg);background:rgba(255,255,255,.06)}
-
-
 """
 
 FAMA_PAGE_JS = """
@@ -2272,7 +2261,7 @@ var infoDesc = el('p', 'desc'); infoDesc.textContent = fam.description || '';
 document.getElementById('infoText').appendChild(infoDesc);
 document.getElementById('infoMeta').innerHTML = '';
 document.getElementById('infoMeta').textContent = '';
-document.getElementById('infoMeta').appendChild(document.createTextNode('обновлено: ' + (fam.updated || '—')));
+document.getElementById('infoMeta').appendChild(document.createTextNode('обновлено: ' + (fam.updated || '-')));
 
 var typeInfo = {};
 (fam.threads || []).forEach(function(t){ typeInfo[t.id] = t; });
@@ -2457,14 +2446,14 @@ function openProfile(name){
   if(m.role) ht.appendChild(el('span', 'role', m.role));
   if(m.role && ROLE_FULL[m.role]) ht.appendChild(el('span', 'role-full', ROLE_FULL[m.role]));
   head.appendChild(ht);
-  var close = el('button', 'close', '×'); close.type = 'button';
+  var close = el('button', 'close', 'x'); close.type = 'button';
   close.addEventListener('click', function(){ profilePanel.hidden = true; });
   head.appendChild(close);
   profilePanel.appendChild(head);
   var meta = [];
   if(m.generation){ meta.push('поколение ' + (ROMAN[m.generation] || m.generation)); }
   if(m.birth){ meta.push(m.birth + ' г.'); }
-  if(meta.length){ profilePanel.appendChild(el('div', 'meta-line', meta.join(' · '))); }
+  if(meta.length){ profilePanel.appendChild(el('div', 'meta-line', meta.join(' - '))); }
   if(m.note){ profilePanel.appendChild(el('p', 'note', m.note)); }
   var relsOf = (fam.relations || []).filter(function(r){ return r.from === name || r.to === name; });
   if(relsOf.length){
@@ -2487,7 +2476,7 @@ function openProfile(name){
   var inp = el('input'); inp.readOnly = true; inp.value = link; inp.title = link;
   var copyBtn = el('button', null, 'Копировать'); copyBtn.type = 'button';
   copyBtn.addEventListener('click', function(){
-    function done(){ copyBtn.textContent = 'Готово ✓'; setTimeout(function(){ copyBtn.textContent = 'Копировать'; }, 1500); }
+    function done(){ copyBtn.textContent = 'Готово OK'; setTimeout(function(){ copyBtn.textContent = 'Копировать'; }, 1500); }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(link).then(done, function(){ inp.select(); });
     } else { inp.select(); try { document.execCommand('copy'); done(); } catch(e) {} }
@@ -2511,7 +2500,7 @@ btnSavePos.addEventListener('click', function(){
     .then(function(r){
       if(r.status === 200){
         try { localStorage.setItem('famaPass', pass); } catch(err) {}
-        btnSavePos.textContent = 'Сохранено ✓';
+        btnSavePos.textContent = 'Сохранено OK';
         setTimeout(function(){ btnSavePos.hidden = true; btnSavePos.textContent = 'Сохранить позиции'; dirty = false; }, 1600);
       } else if(r.status === 403){
         btnSavePos.textContent = 'Неверный пароль';
@@ -2674,10 +2663,10 @@ function renderGate(){
   if(gateStep === 0){
     gateStepEl.textContent = 'Шаг 1 из 2';
     gateTitle.textContent = 'Как смотришь?';
-    gateSub.textContent = 'Выбери версию сайта — её можно будет поменять в любой момент.';
+    gateSub.textContent = 'Выбери версию сайта - её можно будет поменять в любой момент.';
     var opts = [
-      { v: 'pc', ico: '🖥', t: 'ПК-версия', s: 'Полная доска, панели сбоку, удобно мышью' },
-      { v: 'mobile', ico: '📱', t: 'Мобильная версия', s: 'Компактные карточки, панели снизу, под палец' }
+      { v: 'pc', ico: 'PC', t: 'ПК-версия', s: 'Полная доска, панели сбоку, удобно мышью' },
+      { v: 'mobile', ico: 'M', t: 'Мобильная версия', s: 'Компактные карточки, панели снизу, под палец' }
     ];
     opts.forEach(function(o){
       var b = el('button', 'gate-opt' + (gateMode === o.v ? ' on' : ''));
@@ -2696,9 +2685,9 @@ function renderGate(){
   } else {
     gateStepEl.textContent = 'Шаг 2 из 2';
     gateTitle.textContent = 'На каком сервере Харука-Арч?';
-    gateSub.textContent = 'Пока доступен один сервер — «North». Другие появятся позже.';
+    gateSub.textContent = 'Пока доступен один сервер - "North". Другие появятся позже.';
     var sb = el('button', 'gate-opt on'); sb.type = 'button';
-    sb.appendChild(el('span', 'ico', '⛏'));
+    sb.appendChild(el('span', 'ico', 'P'));
     var st = el('span');
     st.appendChild(el('b', null, SERVER_NAME));
     st.appendChild(el('span', null, 'Основной сервер Харука-Арч'));
@@ -2773,14 +2762,14 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>__TITLE__ · Доска Харука-Арч</title>
+<title>__TITLE__ - Доска Харука-Арч</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d13'/%3E%3Cpath d='M8 8 Q16 17 24 24' stroke='%23c9973f' stroke-width='2' fill='none'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23d6b35c'/%3E%3Ccircle cx='24' cy='24' r='4' fill='%23d6b35c'/%3E%3C/svg%3E">
-<meta property="og:title" content="__TITLE__ · Доска Харука-Арч">
+<meta property="og:title" content="__TITLE__ - Доска Харука-Арч">
 <meta property="og:description" content="__OGDESC__">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://__HOST__/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="__TITLE__ · Доска Харука-Арч">
+<meta name="twitter:title" content="__TITLE__ - Доска Харука-Арч">
 <meta name="twitter:description" content="__OGDESC__">
 <meta name="twitter:image" content="https://__HOST__/og.png">
 <style>__STYLES__</style>
@@ -2795,7 +2784,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
     <p id="gateSub"></p>
     <div class="gate-choices" id="gateChoices"></div>
     <div class="gate-next">
-      <button type="button" class="gate-back" id="gateBack" hidden>← назад</button>
+      <button type="button" class="gate-back" id="gateBack" hidden><- назад</button>
       <span></span>
       <button type="button" id="gateNext">Дальше</button>
     </div>
@@ -2812,7 +2801,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <div id="toast-container"></div>
 
 <div id="quick-add-form" class="hidden">
-  <button id="quick-add-close" type="button">×</button>
+  <button id="quick-add-close" type="button">x</button>
   <h3>Новый участник</h3>
   <div class="label">Ник</div>
   <input id="qa-name" type="text" placeholder="Имя на доске">
@@ -2828,7 +2817,7 @@ FAMA_PAGE_TEMPLATE = """<!doctype html>
 <div id="infoText"></div>
 __ROLES__
 <div class="meta" id="infoMeta"></div>
-<div class="meta">Наш адрес для Figura: <code>__HOST__</code><br><a href="/fama/edit">редактировать доску</a> · <a href="/info">что это за адрес?</a></div>
+<div class="meta">Наш адрес для Figura: <code>__HOST__</code><br><a href="/fama/edit">редактировать доску</a> - <a href="/info">что это за адрес?</a></div>
 </div>
 
 <div class="hud members" id="membersPanel" hidden></div>
@@ -2838,7 +2827,7 @@ __ROLES__
 <div class="hud legend" id="legend"></div>
 
 <div class="hud hint">
-Сервер Харука-Арч: <code id="srvName">North</code> · <a href="#" id="gateChange">сменить</a><br>
+Сервер Харука-Арч: <code id="srvName">North</code> - <a href="#" id="gateChange">сменить</a><br>
 Figura Cloud IP: <code>__HOST__</code><br>
 </div>
 
@@ -3077,7 +3066,7 @@ window.addEventListener('pointerup', function(e){
 /* ---------- members ---------- */
 function memberRow(m){
   var row = el('div', 'mrow');
-  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать участника';
+  var del = el('button', 'del', 'x'); del.type = 'button'; del.title = 'Убрать участника';
   del.addEventListener('click', function(){
     var i = members.indexOf(m);
     if(i >= 0) members.splice(i, 1);
@@ -3109,7 +3098,7 @@ function memberRow(m){
   geo.appendChild(gen);
   row.appendChild(geo);
   var idline = el('div', 'mid span2');
-  idline.textContent = m.id ? ('ID профиля: ' + m.id + ' · /member/' + m.id) : 'ID профиля появится после сохранения';
+  idline.textContent = m.id ? ('ID профиля: ' + m.id + ' - /member/' + m.id) : 'ID профиля появится после сохранения';
   row.appendChild(idline);
   return row;
 }
@@ -3134,10 +3123,10 @@ function typeRow(t){
   var label = el('input'); label.placeholder = 'Название связи (братья, женаты...)'; label.value = t.label;
   label.addEventListener('input', function(){ t.label = label.value; renderRels(); changed(); });
   row.appendChild(label);
-  var del = el('button', 'del', '×'); del.type = 'button'; del.title = 'Убрать тип нити';
+  var del = el('button', 'del', 'x'); del.type = 'button'; del.title = 'Убрать тип нити';
   del.addEventListener('click', function(){
     var used = rels.some(function(r){ return r.type === t.id; });
-    if(used){ alert('Есть связи этого типа на доске — сначала уберите их.'); return; }
+    if(used){ alert('Есть связи этого типа на доске - сначала уберите их.'); return; }
     var i = types.indexOf(t);
     if(i >= 0) types.splice(i, 1);
     renderTypes(); renderRels(); changed();
@@ -3166,18 +3155,18 @@ function relRow(r){
     dot.style.background = (t && t.color) || '#4a5064';
     dot.title = (t && t.label) || 'тип не выбран';
   }
-  sFrom.appendChild(opt('—', ''));
+  sFrom.appendChild(opt('-', ''));
   memberNames().forEach(function(n){ sFrom.appendChild(opt(n, n)); });
   sFrom.value = r.from; if(!sFrom.value) sFrom.selectedIndex = 0;
   sFrom.addEventListener('change', function(){ r.from = sFrom.value; changed(); });
   types.forEach(function(t){ sType.appendChild(opt(t.label || t.id, t.id)); });
   sType.value = r.type; if(!sType.value) sType.selectedIndex = 0;
   sType.addEventListener('change', function(){ r.type = sType.value; refreshDot(); changed(); });
-  sTo.appendChild(opt('—', ''));
+  sTo.appendChild(opt('-', ''));
   memberNames().forEach(function(n){ sTo.appendChild(opt(n, n)); });
   sTo.value = r.to; if(!sTo.value) sTo.selectedIndex = 0;
   sTo.addEventListener('change', function(){ r.to = sTo.value; changed(); });
-  var del = el('button', 'del', '×'); del.type = 'button';
+  var del = el('button', 'del', 'x'); del.type = 'button';
   del.addEventListener('click', function(){
     var i = rels.indexOf(r);
     if(i >= 0) rels.splice(i, 1);
@@ -3237,12 +3226,12 @@ document.getElementById('save').addEventListener('click', function(){
         try { localStorage.setItem('famaPass', P.value); } catch(e) {}
         clearDraft();
         document.getElementById('draftbar').hidden = true;
-        out.textContent = 'Сохранено ✓ Доска уже показывает новые данные.';
+        out.textContent = 'Сохранено OK Доска уже показывает новые данные.';
       }
-      else if(r.status === 403){ out.textContent = 'Неверный пароль. Не закрывайте страницу — черновик сохранён в браузере.'; }
+      else if(r.status === 403){ out.textContent = 'Неверный пароль. Не закрывайте страницу - черновик сохранён в браузере.'; }
       else { out.textContent = 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status); }
     })
-    .catch(function(){ out.textContent = 'Сеть недоступна. Не закрывайте страницу — черновик сохранён в браузере.'; });
+    .catch(function(){ out.textContent = 'Сеть недоступна. Не закрывайте страницу - черновик сохранён в браузере.'; });
 });
 
 renderTypes();
@@ -3259,55 +3248,53 @@ FAMA_EDIT_PAGE = """<!doctype html>
 <meta name="robots" content="noindex">
 <title>Редактор Харука-Арч</title>
 <style>
-:root{--bg:#0e0a1c;--bg2:#171126;--card:#1d1530;--fg:#e6e2f0;--muted:#a599c4;--gold:#c9a2ff;--line:#3a2b57;--accent:#9b6bff;--ink:#150d2a}
+:root{--bg:#0a080f;--bg2:#140d26;--card:#161028;--fg:#e8e4f2;--muted:#9a8cc6;--gold:#d8b4ff;--line:#2d2442;--accent:#8b5cf6;--ink:#0f0a1a}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 80px}
+body{background:radial-gradient(1200px 500px at 50% 0pct,#2d1f4a,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 100px}
 main{max-width:900px;margin:0 auto}
 h1{color:var(--gold);font-size:24px;margin:0 0 4px;letter-spacing:.02em}
 p.h{color:var(--muted);margin:0 0 20px;font-size:13px}
-input,textarea,select{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;margin:0}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(155,107,255,.15)}
+input,textarea,select{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:11px 16px;font:inherit;font-size:14px;margin:0}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
 select{margin-top:2px}
-.label{display:block;color:var(--muted);font-size:11px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 16px;box-shadow:0 16px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px)}
-.panel h3{margin:0 0 6px;font-size:15px;color:var(--gold);letter-spacing:.01em}
-.panel p.sub{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
-.mrow{position:relative;display:grid;grid-template-columns:1.25fr .75fr;gap:8px 10px;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;padding-right:40px}
+.label{display:block;color:var(--muted);font-size:11px;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin:0 0 20px;box-shadow:0 24px 50px rgba(0,0,0,.45);backdrop-filter:blur(14px)}
+.panel h3{margin:0 0 8px;font-size:16px;color:var(--gold);letter-spacing:.01em}
+.panel p.sub{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+.mrow{position:relative;display:grid;grid-template-columns:1.25fr .75fr;gap:10px 12px;border-top:1px solid var(--line);padding-top:14px;margin-top:14px;padding-right:44px}
 .mrow:first-child{border-top:none;padding-top:0}
-.mrow .del{position:absolute;top:10px;right:0;background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer}
+.mrow .del{position:absolute;top:12px;right:0;background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:10px;width:34px;height:34px;font-size:15px;cursor:pointer;transition:all .15s}
 .mrow .del:hover{color:#fff;background:#e07070}
 .span2{grid-column:1 / -1}
-.geo{grid-column:1 / -1;display:flex;gap:8px;align-items:center}
+.geo{grid-column:1 / -1;display:flex;gap:10px;align-items:center}
 .geo input{margin:0}
 .geo .pos{min-width:14px;width:auto;color:var(--muted);font-size:11px;text-align:right}
 .mid{font-size:10px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;letter-spacing:.02em}
-.trow{display:grid;grid-template-columns:48px 1fr 32px;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
-.trow input[type=color]{height:32px;padding:2px;cursor:pointer;border:none;width:32px;height:32px;border-radius:6px}
-.trow input[type=color]::-webkit-color-picker-wrapper{border:none}
-.trow input[type=color]::-webkit-color-picker{pointer:none}
-.trow .del,.rrow .del{background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:8px;width:28px;height:28px;font-size:13px;cursor:pointer}
+.trow{display:grid;grid-template-columns:48px 1fr 36px;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.trow input[type=color]{height:36px;padding:2px;cursor:pointer;border:none;width:36px;height:36px;border-radius:8px}
+.trow .del,.rrow .del{background:var(--bg2);color:#e07070;border:1px solid var(--line);border-radius:10px;width:32px;height:32px;font-size:14px;cursor:pointer;transition:all .15s}
 .trow .del:hover,.rrow .del:hover{color:#fff;background:#e07070}
-.rrow{display:grid;grid-template-columns:10px 1fr 1fr 1fr 32px;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.rrow{display:grid;grid-template-columns:10px 1fr 1fr 1fr 36px;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .rel-dot{width:10px;height:10px;border-radius:50%;background:#4a5064;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
 .pvwrap{position:sticky;top:0;z-index:2}
-.pv{position:relative;width:100%;height:260px;border-radius:10px;background:radial-gradient(600px 300px at 60% 20%,#1c2030,transparent),linear-gradient(180deg,#181b28,#12141c);border:1px solid var(--line);overflow:hidden;box-shadow:inset 0 0 60px rgba(0,0,0,.4)}
+.pv{position:relative;width:100%;height:280px;border-radius:16px;background:radial-gradient(600px 300px at 60% 20%,#1c2030,transparent),linear-gradient(180deg,#181b28,#12141c);border:1px solid var(--line);overflow:hidden;box-shadow:inset 0 0 70px rgba(0,0,0,.4)}
 .pv svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.pv .pvhint{position:absolute;bottom:6px;right:10px;font-size:10px;color:var(--muted);pointer-events:none}
-.pvchip{position:absolute;width:100px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#2d1f44;border-radius:8px;padding:6px 8px 7px;font-size:10px;line-height:1.3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transform:rotate(var(--tilt,0deg));transform-origin:50% -8px;box-shadow:0 8px 16px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
+.pv .pvhint{position:absolute;bottom:8px;right:12px;font-size:10px;color:var(--muted);pointer-events:none}
+.pvchip{position:absolute;width:104px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#e8e4f2;border-radius:10px;padding:7px 10px 8px;font-size:10px;line-height:1.3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transform:rotate(var(--tilt,0deg));transform-origin:50% -8px;box-shadow:0 10px 20px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
 .pvchip.dragging{cursor:grabbing;z-index:3}
 .pvchip b{display:block;color:#2d1f44;text-transform:uppercase;word-break:break-word}
 .pvchip .role{display:block;color:#5b3a9e;font-size:8px;text-transform:uppercase;letter-spacing:.05em}
 .pvthread{fill:none;stroke-linecap:round;opacity:.95}
-.draftbar{background:rgba(255,255,255,.04);border:1px solid var(--line);color:#e6e2f0;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.draftbar button{margin:0;padding:6px 14px;font-size:12.5px}
-button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:10px;padding:9px 18px;cursor:pointer;margin-top:10px;font-weight:500;transition:all .15s}
-button.ghost:hover{background:rgba(155,107,255,.08);border-color:var(--accent);color:#e6e2f0}
-#save{display:block;margin:20px auto 0;background:var(--accent);color:#140c24;border:0;border-radius:10px;padding:12px 40px;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s}
-#save:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(155,107,255,.25)}
+.draftbar{background:rgba(255,255,255,.04);border:1px solid var(--line);color:#e6e2f0;border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.draftbar button{margin:0;padding:7px 16px;font-size:13px}
+button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);border-radius:11px;padding:10px 20px;cursor:pointer;margin-top:12px;font-weight:500;transition:all .15s}
+button.ghost:hover{background:rgba(139,92,246,.08);border-color:var(--accent);color:#e8e4f2}
+#save{display:block;margin:24px auto 0;background:var(--accent);color:#0a080f;border:0;border-radius:12px;padding:14px 44px;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s}
+#save:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(139,92,246,.25)}
 #save:active{transform:translateY(0)}
-#out{text-align:center;color:var(--muted);margin-top:12px;font-size:13px;min-height:18px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.grid2{grid-template-columns:1fr}.mrow{grid-template-columns:1fr;padding-right:10px}}
+#out{text-align:center;color:var(--muted);margin-top:14px;font-size:13px;min-height:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.grid2{grid-template-columns:1fr}.mrow{grid-template-columns:1fr;padding-right:12px}}
 </style>
 </head>
 <body>
@@ -3317,8 +3304,8 @@ button.ghost:hover{background:rgba(155,107,255,.08);border-color:var(--accent);c
 <div class="draftbar" id="draftbar" hidden><span>Найден несохранённый черновик с прошлого раза.</span><button id="btnRestore" type="button">Восстановить</button><button id="btnDiscard" class="ghost" type="button">Удалить</button></div>
 <div class="panel pvwrap">
   <h3>Живое превью доски</h3>
-  <p class="sub">Это как будет выглядеть доска. Карточки можно таскать мышью прямо здесь — позиции сохранятся при сохранении.</p>
-  <div class="pv" id="pvBoard"><svg id="pvThreads"></svg><span class="pvhint">тащи карточки мышью ✓</span></div>
+  <p class="sub">Это как будет выглядеть доска. Карточки можно таскать мышью прямо здесь - позиции сохранятся при сохранении.</p>
+  <div class="pv" id="pvBoard"><svg id="pvThreads"></svg><span class="pvhint">тащи карточки мышью OK</span></div>
 </div>
 <label class="label">Название Харука-Арч</label>
 <input id="title" placeholder="Харука-Арч">
@@ -3330,7 +3317,7 @@ button.ghost:hover{background:rgba(155,107,255,.08);border-color:var(--accent);c
 <textarea id="description" rows="4" placeholder="История, принципы, вехи..."></textarea>
 <div class="panel">
   <h3>Участники</h3>
-  <p class="sub">Позицию карточки лучше менять перетаскиванием прямо на доске — здесь цифры X/Y как запасной вариант.</p>
+  <p class="sub">Позицию карточки лучше менять перетаскиванием прямо на доске - здесь цифры X/Y как запасной вариант.</p>
   <div id="members"></div>
   <datalist id="rolePresets">
 __ROLES_OPTIONS__
@@ -3339,13 +3326,13 @@ __ROLES_OPTIONS__
 </div>
 <div class="panel">
   <h3>Типы нитей</h3>
-  <p class="sub">Каждый тип — это цвет нити на доске: кровные, жена, братья, друзья, вражда... Можно добавить свои.</p>
+  <p class="sub">Каждый тип - это цвет нити на доске: кровные, жена, братья, друзья, вражда... Можно добавить свои.</p>
   <div id="types"></div>
   <button class="ghost" id="addType" type="button">+ Добавить тип нити</button>
 </div>
 <div class="panel">
   <h3>Связи</h3>
-  <p class="sub">Выберите двух участников и тип — между ними натянется нить выбранного цвета.</p>
+  <p class="sub">Выберите двух участников и тип - между ними натянется нить выбранного цвета.</p>
   <div id="rels"></div>
   <button class="ghost" id="addRel" type="button">+ Добавить связь</button>
 </div>
@@ -3388,33 +3375,33 @@ MEMBER_PAGE_TEMPLATE = """<!doctype html>
 <meta name="twitter:description" content="__DESC__">
 <meta name="twitter:image" content="https://__HOST__/og.png">
 <style>
-:root{--bg:#0e0a1c;--card:#1d1530;--fg:#e6e2f0;--muted:#a599c4;--gold:#c9a2ff;--line:#3a2b57;--accent:#9b6bff;--ink:#150d2a}
+:root{--bg:#0a080f;--card:#161028;--fg:#e8e4f2;--muted:#9a8cc6;--gold:#d8b4ff;--line:#2d2442;--accent:#8b5cf6}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 80px}
+body{background:radial-gradient(1200px 500px at 50% 0pct,#2d1f4a,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 80px}
 main{max-width:640px;margin:0 auto}
-a{color:var(--accent);text-decoration-none}a:hover{text-decoration:underline}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;box-shadow:0 20px 44px rgba(0,0,0,.5);backdrop-filter:blur(12px)}
-.head{display:flex;gap:16px;align-items:center}
-.ava{width:80px;height:80px;flex:0 0 auto;border-radius:8px;background:#cbbce8;image-rendering:pixelated;box-shadow:0 6px 16px rgba(0,0,0,.4)}
-.tile{width:80px;height:80px;flex:0 0 auto;border-radius:8px;background:linear-gradient(180deg,#8a63d6,#5b3a9e);color:#f4ecff;font-size:36px;line-height:80px;text-align:center;text-transform:uppercase;box-shadow:0 6px 16px rgba(0,0,0,.4)}
-.head h1{margin:0;font-size:26px;color:var(--gold);word-break:break-word}
-.role{color:#140c24;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;padding:3px 10px;border-radius:7px;display:inline-block;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-weight:600}
-.role-full{display:block;color:var(--muted);font-size:10.5px;line-height:1.45;margin-top:2px;max-width:420px}
-.meta{color:var(--muted);font-size:12px;margin-top:6px}
-.note{white-space:pre-line;line-height:1.65;font-size:14px;margin:16px 0 6px}
-h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:20px 0 6px}
-.rel{display:flex;gap:9px;align-items:center;font-size:14px;padding:8px 0;border-top:1px solid var(--line);color:var(--fg)}
-.rel .sw{width:22px;height:3px;border-radius:2px;flex:0 0 auto}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 26px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5);backdrop-filter:blur(16px)}
+.head{display:flex;gap:18px;align-items:center}
+.ava{width:80px;height:80px;flex:0 0 auto;border-radius:12px;background:#cbbce8;image-rendering:pixelated;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.tile{width:80px;height:80px;flex:0 0 auto;border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#d946ef);color:#f4ecff;font-size:40px;line-height:80px;text-align:center;text-transform:uppercase;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.head h1{margin:0;font-size:28px;color:var(--gold);word-break:break-word}
+.role{color:#170b26;font-size:11px;text-transform:uppercase;letter-spacing:.09em;margin-top:5px;padding:4px 14px;border-radius:10px;display:inline-block;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-weight:700}
+.role-full{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:4px;max-width:450px}
+.meta{color:var(--muted);font-size:12px;margin-top:8px}
+.note{white-space:pre-line;line-height:1.7;font-size:14.5px;margin:18px 0 8px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px}
+.rel{display:flex;gap:10px;align-items:center;font-size:14px;padding:9px 0;border-top:1px solid var(--line);color:var(--fg)}
+.rel .sw{width:24px;height:3px;border-radius:2px;flex:0 0 auto}
 .rel .who{margin-left:auto;color:var(--muted);font-size:12px}
 .none{color:var(--muted);font-size:13px;margin:8px 0}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
-.btn{display:inline-block;background:var(--accent);color:#140c24;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;text-decoration:none;transition:all .15s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(155,107,255,.25)}
-.btn.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);font-weight:500}
-.btn.ghost:hover{background:rgba(155,107,255,.08);border-color:var(--accent);color:#e6e2f0}
-.foot{margin-top:18px;font-size:12px;color:var(--muted)}
-.foot code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--fg)}
-@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.card{padding:16px 16px 14px}}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.btn{display:inline-block;background:var(--accent);color:#0a080f;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:600;text-decoration:none;transition:all .15s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(139,92,246,.3)}
+.btn.ghost{background:transparent;color:var(--gold);border:1px solid var(--line);font-weight:500}
+.btn.ghost:hover{background:rgba(139,92,246,.08);border-color:var(--accent);color:#e8e4f2}
+.foot{margin-top:22px;font-size:12px;color:var(--muted)}
+.foot code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:8px;padding:2px 10px;color:var(--fg)}
+@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.card{padding:18px 18px 16px}}
 </style>
 </head>
 <body>
@@ -3433,7 +3420,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute
   __RELS__
   <div class="actions">
     <a class="btn" href="/?m=__MEMBER_ID__">Показать на доске</a>
-    <a class="btn ghost" href="/">← на доску Харука-Арч</a>
+    <a class="btn ghost" href="/"><- на доску Харука-Арч</a>
     <button class="btn ghost" id="btnCopyLink">Копировать ссылку</button>
   </div>
 </div>
@@ -3449,7 +3436,7 @@ document.getElementById('btnCopyLink').addEventListener('click', function(){
   navigator.clipboard.writeText(url).then(function(){
     var btn = document.getElementById('btnCopyLink');
     var old = btn.textContent;
-    btn.textContent = 'Скопировано ✓';
+    btn.textContent = 'Скопировано OK';
     setTimeout(function(){ btn.textContent = old; }, 1500);
   });
 });
@@ -3492,7 +3479,7 @@ async def handle_member(request):
         rels_rows.append(
             f'<div class="rel"><span class="sw" style="background:{html.escape(color)}"></span>'
             f'{html.escape(label)}: <a href="{html.escape(other_url)}">{html.escape(other_name or "?")}</a>'
-            f'<span class="who">открыть профиль →</span></div>'
+            f'<span class="who">открыть профиль -></span></div>'
         )
     rels_html = "".join(rels_rows) if rels_rows else '<p class="none">Связей пока нет.</p>'
     meta_bits = []
@@ -3514,7 +3501,7 @@ async def handle_member(request):
     if role_full:
         role_html += f'<div class="role-full">{html.escape(role_full)}</div>'
     page = (MEMBER_PAGE_TEMPLATE
-            .replace("__TITLE__", html.escape(name + (" · " + role_raw if role_raw else "") + " · Харука-Арч"))
+            .replace("__TITLE__", html.escape(name + (" - " + role_raw if role_raw else "") + " - Харука-Арч"))
             .replace("__DESC__", html.escape(desc))
             .replace("__HOST__", html.escape(host))
             .replace("__AVATAR__",
@@ -3522,7 +3509,7 @@ async def handle_member(request):
                      f'<span class="tile" id="avaTile" hidden>{html.escape((name or "?")[:1].upper())}</span>')
             .replace("__NAME__", html.escape(name))
             .replace("__ROLE__", role_html)
-            .replace("__META__", f'<div class="meta">{html.escape(" · ".join(meta_bits))}</div>' if meta_bits else "")
+            .replace("__META__", f'<div class="meta">{html.escape(" - ".join(meta_bits))}</div>' if meta_bits else "")
             .replace("__NOTE__", f'<p class="note">{html.escape(note_text)}</p>' if note_text else "")
             .replace("__RELS__", rels_html)
             .replace("__MEMBER_ID__", quote(member_id or name))
@@ -3536,37 +3523,39 @@ async def handle_member(request):
 
 # ======================== Панель настроек ========================
 PANEL_PAGE_STYLES = """
-:root{--bg:#0e0a1c;--bg2:#171126;--card:#1d1530;--fg:#e6e2f0;--muted:#a599c4;--gold:#c9a2ff;--line:#3a2b57;--accent:#9b6bff;--ink:#150d2a;--ok:#4caf6d;--err:#e07070}
+:root{--bg:#0a080f;--bg2:#140d26;--card:#161028;--fg:#e8e4f2;--muted:#9a8cc6;--gold:#d8b4ff;--line:#2d2442;--accent:#8b5cf6;--ok:#4caf6d;--err:#e07070}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 600px at 20% 10%,#2a1d4a 0%,transparent 50%),radial-gradient(900px 500px at 80% 90%,#1a1030 0%,transparent 45%),var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 80px}
+body{background:radial-gradient(1200px 600px at 20% 10%,#2a1d4a 0%,transparent 50%),radial-gradient(900px 500px at 80% 90%,#1a1030 0%,transparent 45%),var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 100px}
 main{max-width:800px;margin:0 auto}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
 .hdr h1{margin:0;font-size:24px;color:var(--gold);letter-spacing:.02em}
 .hdr a{color:var(--accent);text-decoration:none;font-size:13px}
+h1{margin:0}
 p.h{color:var(--muted);margin:0 0 20px;font-size:13px;line-height:1.5}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 16px;box-shadow:0 16px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px)}
-.panel h3{margin:0 0 6px;font-size:15px;color:var(--gold);letter-spacing:.01em}
-.panel p.sub{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
-.label{display:block;color:var(--muted);font-size:11px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
-input,textarea,select{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;margin:0}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(155,107,255,.15)}
-button{background:var(--accent);color:#140c24;border:0;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;transition:all .15s}
-button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(155,107,255,.25)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin:0 0 20px;box-shadow:0 24px 50px rgba(0,0,0,.45);backdrop-filter:blur(16px)}
+.panel h3{margin:0 0 8px;font-size:16px;color:var(--gold);letter-spacing:.01em}
+.panel p.sub{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+.label{display:block;color:var(--muted);font-size:11px;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+input,textarea,select{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:11px 16px;font:inherit;font-size:14px;margin:0}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+button{background:var(--accent);color:#0a080f;border:0;border-radius:12px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;margin-top:12px;transition:all .15s}
+button:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(139,92,246,.3)}
 button:active{transform:translateY(0)}
 button.ghost{background:var(--bg2);color:var(--gold);border:1px solid var(--line);font-weight:500}
-button.ghost:hover{background:rgba(155,107,255,.08);border-color:var(--accent);color:#e6e2f0}
-.out{font-size:12.5px;color:var(--muted);margin-top:8px;min-height:18px;white-space:pre-wrap}
+button.ghost:hover{background:rgba(139,92,246,.08);border-color:var(--accent);color:#e8e4f2}
+.out{font-size:12.5px;color:var(--muted);margin-top:10px;min-height:18px;white-space:pre-wrap}
 .out.ok{color:var(--ok)}.out.err{color:var(--err)}
-.info{font-size:12.5px;color:var(--muted);line-height:1.6;margin:10px 0 0}
-.info code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--fg);font-size:12px}
-.info ol{margin:8px 0 0;padding-left:20px}
-.info li{margin:4px 0}
-@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.panel{padding:14px 16px}}
+.info{font-size:12.5px;color:var(--muted);line-height:1.6;margin:12px 0 0}
+.info code{background:rgba(20,14,30,.6);border:1px solid var(--line);border-radius:8px;padding:1px 8px;color:var(--fg);font-size:12px}
+.info ol{margin:10px 0 0;padding-left:22px}
+.info li{margin:5px 0}
+.hdr{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hdr a{color:var(--accent);text-decoration:none;font-size:13px}
+@media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}.panel{padding:16px 18px}}
 """
-
 PANEL_PAGE_JS = """
 var P = document.getElementById('pass');
 try { P.value = localStorage.getItem('famaPass') || ''; } catch(e) {}
@@ -3579,7 +3568,7 @@ function post(url, body, outId, okText){
   fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ savePassIfNeeded(200); out(outId, okText || (r.json && r.json.message) || 'Сохранено ✓', 'ok'); }
+      if(r.status === 200){ savePassIfNeeded(200); out(outId, okText || (r.json && r.json.message) || 'Сохранено OK', 'ok'); }
       else if(r.status === 403){ out(outId, 'Неверный пароль.', 'err'); }
       else { out(outId, 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status), 'err'); }
     })
@@ -3588,19 +3577,19 @@ function post(url, body, outId, okText){
 
 document.getElementById('btnHost').addEventListener('click', function(){
   var v = document.getElementById('hostDisplay').value.trim();
-  post('/panel/host', { password: P.value, host_display: v }, 'outHost', v ? 'Адрес сохранён ✓ На доске теперь показывается он.' : 'Сброшено ✓ Доска показывает адрес, который видит браузер.');
+  post('/panel/host', { password: P.value, host_display: v }, 'outHost', v ? 'Адрес сохранён OK На доске теперь показывается он.' : 'Сброшено OK Доска показывает адрес, который видит браузер.');
 });
 
 document.getElementById('btnServer').addEventListener('click', function(){
   var v = document.getElementById('serverName').value.trim();
   if(!v){ out('outServer', 'Введите название сервера.', 'err'); return; }
-  post('/panel/server', { password: P.value, server_name: v }, 'outServer', 'Сервер сохранён ✓ Теперь на старте показывается «' + v + '».');
+  post('/panel/server', { password: P.value, server_name: v }, 'outServer', 'Сервер сохранён OK Теперь на старте показывается "' + v + '".');
 });
 
 document.getElementById('btnPassword').addEventListener('click', function(){
   var np = document.getElementById('newPass').value;
   if(!np){ out('outPassword', 'Введите новый пароль.', 'err'); return; }
-  post('/panel/password', { password: P.value, new_password: np }, 'outPassword', 'Пароль изменён ✓ Он действует для панели и редактора сразу.');
+  post('/panel/password', { password: P.value, new_password: np }, 'outPassword', 'Пароль изменён OK Он действует для панели и редактора сразу.');
   document.getElementById('newPass').value = '';
 });
 
@@ -3614,7 +3603,7 @@ document.getElementById('btnPing').addEventListener('click', function(){
   fetch('/panel/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: P.value, token: tok, url: url, repo: repo }) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
     .then(function(r){
-      if(r.status === 200){ out('outPing', 'Готово ✓ Анти-сон теперь пингует: ' + (r.json.ping_url || url), 'ok'); document.getElementById('token').value = ''; }
+      if(r.status === 200){ out('outPing', 'Готово OK Анти-сон теперь пингует: ' + (r.json.ping_url || url), 'ok'); document.getElementById('token').value = ''; }
       else if(r.status === 403){ out('outPing', 'Неверный пароль панели.', 'err'); }
       else { out('outPing', 'Ошибка: ' + ((r.json && r.json.error) ? r.json.error : r.status), 'err'); }
     })
@@ -3622,8 +3611,8 @@ document.getElementById('btnPing').addEventListener('click', function(){
 });
 
 document.getElementById('curPing').textContent = 'Сейчас пингуется: ' + (__PING_URL__ || 'адрес по умолчанию из репозитория');
-document.getElementById('curHost').textContent = 'Сейчас показывается на доске: ' + (__HOST_DISPLAY__ || '(автоматически — адрес из браузера)');
-document.getElementById('curEditorPass').textContent = 'Пароль редактора: задан ' + (__HAS_PASS__ ? '(да)' : '(НЕТ — редактор выключен)');
+document.getElementById('curHost').textContent = 'Сейчас показывается на доске: ' + (__HOST_DISPLAY__ || '(автоматически - адрес из браузера)');
+document.getElementById('curEditorPass').textContent = 'Пароль редактора: задан ' + (__HAS_PASS__ ? '(да)' : '(НЕТ - редактор выключен)');
 document.getElementById('curServer').textContent = 'Сейчас на сайте: ' + __SERVER_NAME__;
 document.getElementById('serverName').value = __SERVER_NAME__;
 document.getElementById('curBackup').textContent = __BACKUP_INFO__;
@@ -3635,12 +3624,12 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Панель настроек · Харука-Арч</title>
+<title>Панель настроек - Харука-Арч</title>
 <style>__STYLES__</style>
 </head>
 <body>
 <main>
-<div class="hdr"><h1>Панель настроек</h1><a href="/">← на доску</a></div>
+<div class="hdr"><h1>Панель настроек</h1><a href="/"><- на доску</a></div>
 <p class="h">Всё управляется отсюда, без Render и без правки кода. Пароль здесь тот же, что и в редакторе доски.</p>
 
 <div class="panel">
@@ -3656,7 +3645,7 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="panel">
   <h3>Сервер Харука-Арч</h3>
-  <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один — «North».</p>
+  <p class="sub">Название сервера, которое видят игроки на стартовом экране и на доске. Пока один - "North".</p>
   <input id="serverName" placeholder="North">
   <button id="btnServer" type="button">Сохранить сервер</button>
   <div class="info" id="curServer"></div>
@@ -3665,29 +3654,29 @@ PANEL_PAGE_TEMPLATE = """<!doctype html>
 
 <div class="panel">
   <h3>Авто-бэкап доски в GitHub</h3>
-  <p class="sub">Когда задан токен, каждое сохранение доски коммитит data/fam.json в репозиторий. Данные переживают перезапуск Render. Токен в панели не хранится — только в Environment.</p>
+  <p class="sub">Когда задан токен, каждое сохранение доски коммитит data/fam.json в репозиторий. Данные переживают перезапуск Render. Токен в панели не хранится - только в Environment.</p>
   <div class="info" id="curBackup"></div>
 </div>
 
 <div class="panel">
   <h3>Адрес для доски (домен)</h3>
-  <p class="sub">Что показывать на доске как «Figura Cloud IP». Полезно, если игрокам нужно вписывать красивое имя домена.</p>
-  <input id="hostDisplay" placeholder="arch-family.indevs.in (пусто — показывать реальный адрес)">
+  <p class="sub">Что показывать на доске как "Figura Cloud IP". Полезно, если игрокам нужно вписывать красивое имя домена.</p>
+  <input id="hostDisplay" placeholder="arch-family.indevs.in (пусто - показывать реальный адрес)">
   <button id="btnHost" type="button">Сохранить адрес</button>
   <div class="info" id="curHost"></div>
   <div class="out" id="outHost"></div>
   <div class="info"><b>Как привязать свой домен:</b>
   <ol>
-    <li>Render → твой сервис → Settings → Custom Domains → Add Custom Domain → вписать <code>arch-family.indevs.in</code></li>
-    <li>Render покажет CNAME-запись — добавь её в панели DNS у поставщика домена (тип: CNAME, имя: <code>arch-family</code>, значение: как показал Render)</li>
-    <li>Дождись статуса Verified — HTTPS Render поднимет сам</li>
-    <li>Вернись сюда и впиши этот адрес в поле выше — доска сразу покажет его игрокам</li>
+    <li>Render -> твой сервис -> Settings -> Custom Domains -> Add Custom Domain -> вписать <code>arch-family.indevs.in</code></li>
+    <li>Render покажет CNAME-запись - добавь её в панели DNS у поставщика домена (тип: CNAME, имя: <code>arch-family</code>, значение: как показал Render)</li>
+    <li>Дождись статуса Verified - HTTPS Render поднимет сам</li>
+    <li>Вернись сюда и впиши этот адрес в поле выше - доска сразу покажет его игрокам</li>
   </ol></div>
 </div>
 
 <div class="panel">
   <h3>Анти-сон (пинг каждые 5 минут)</h3>
-  <p class="sub">GitHub Actions пингует сервер, чтобы он не засыпал. Здесь можно сменить адрес, который пингуется — нужен GitHub-токен с доступом к репозиторию (scope: repo, workflow). Токен нигде не сохраняется.</p>
+  <p class="sub">GitHub Actions пингует сервер, чтобы он не засыпал. Здесь можно сменить адрес, который пингуется - нужен GitHub-токен с доступом к репозиторию (scope: repo, workflow). Токен нигде не сохраняется.</p>
   <input id="repo" placeholder="репозиторий (по умолчанию MrXerobrinYt/figura-unchained-backend)">
   <label class="label">Новый адрес пинга</label>
   <input id="pingUrl" placeholder="https://arch-family.indevs.in/api/version">
@@ -3708,7 +3697,7 @@ async def handle_panel(request):
     if not fama_password_configured():
         return web.Response(status=503, text="Panel disabled: set FAMA_PASSWORD or add a password hash to data/settings.json")
     if fama_github_token():
-        backup_info = f"Включён ✓ Репозиторий: {FAMA_GITHUB_REPO}"
+        backup_info = f"Включён OK Репозиторий: {FAMA_GITHUB_REPO}"
         if fam_backup_state.get("last_ok"):
             backup_info += f"\nПоследний бэкап: {fam_backup_state['last_ok']}"
         if fam_backup_state.get("last_error"):
@@ -3970,21 +3959,21 @@ STATUS_PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Статус · Харука-Арч</title>
+<title>Статус - Харука-Арч</title>
 <style>
-:root{--bg:#0e0a1c;--card:#1d1530;--fg:#e6e2f0;--muted:#a599c4;--gold:#c9a2ff;--line:#3a2b57;--ok:#4caf6d;--err:#e07070}
+:root{--bg:#0a080f;--card:#161028;--fg:#e8e4f2;--muted:#9a8cc6;--gold:#d8b4ff;--line:#2d2442;--ok:#4caf6d;--err:#e07070}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}
-body{background:radial-gradient(1200px 500px at 50% -10%,#2a1d45,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 60px}
+body{background:radial-gradient(1200px 500px at 50% 0pct,#2d1f4a,var(--bg)) fixed;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 14px 60px}
 main{max-width:680px;margin:0 auto}
 h1{color:var(--gold);font-size:24px;margin:0 0 16px;letter-spacing:.02em}
-.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:10px 0;display:flex;gap:12px;align-items:center;transition:all .2s}
-.row:hover{border-color:rgba(155,107,255,.3)}
-.dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
-.dot.ok{background:var(--ok);box-shadow:0 0 10px rgba(76,175,109,.5)}
-.dot.err{background:var(--err);box-shadow:0 0 10px rgba(224,112,112,.5)}
+.row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 18px;margin:10px 0;display:flex;gap:14px;align-items:center;transition:all .2s}
+.row:hover{border-color:rgba(139,92,246,.3)}
+.dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
+.dot.ok{background:var(--ok);box-shadow:0 0 12px rgba(76,175,109,.5)}
+.dot.err{background:var(--err);box-shadow:0 0 12px rgba(224,112,112,.5)}
 .row b{display:block;font-size:14px;color:var(--fg)}
 .row span{color:var(--muted);font-size:12.5px}
-a{color:#9b6bff;text-decoration:none}
+a{color:#8b5cf6;text-decoration:none}
 a:hover{text-decoration:underline}
 @media(max-width:640px){body{padding:16px 12px 60px}main{max-width:100%}}
 </style>
@@ -3993,7 +3982,7 @@ a:hover{text-decoration:underline}
 <main>
 <h1>Статус сервера</h1>
 __ROWS__
-<p style="color:var(--muted);font-size:12.5px">← <a href="/">на доску</a> · <a href="/fama/edit">редактировать</a> · <a href="/panel">панель настроек</a></p>
+<p style="color:var(--muted);font-size:12.5px"><- <a href="/">на доску</a> - <a href="/fama/edit">редактировать</a> - <a href="/panel">панель настроек</a></p>
 </main>
 </body>
 </html>
@@ -4006,7 +3995,7 @@ def status_row(ok, title, sub):
 
 async def handle_status(request):
     rows = []
-    rows.append(status_row(True, "Сервер работает", f"аптайм: {int((time.time() - SERVER_STARTED_AT) / 60)} мин · время сервера: {time.strftime('%Y-%m-%d %H:%M')}"))
+    rows.append(status_row(True, "Сервер работает", f"аптайм: {int((time.time() - SERVER_STARTED_AT) / 60)} мин - время сервера: {time.strftime('%Y-%m-%d %H:%M')}"))
     try:
         async with ClientSession() as session:
             async with session.get(f"http://127.0.0.1:{os.environ.get('PORT', '10000')}/api/version", timeout=ClientTimeout(total=5)) as resp:
@@ -4015,29 +4004,29 @@ async def handle_status(request):
         rows.append(status_row(False, "API /api/version", f"недоступен: {e!r}"))
     n_members = len(fam_state.get("members") or [])
     n_rels = len(fam_state.get("relations") or [])
-    rows.append(status_row(True, "Доска Харука-Арч", f"участников: {n_members} · связей: {n_rels} · обновлено: {fam_state.get('updated') or '—'}"))
+    rows.append(status_row(True, "Доска Харука-Арч", f"участников: {n_members} - связей: {n_rels} - обновлено: {fam_state.get('updated') or '-'}"))
     has_pass = fama_password_configured()
-    rows.append(status_row(has_pass, "Редактор доски", "пароль задан ✓" if has_pass else "пароль не задан — редактор выключен"))
+    rows.append(status_row(has_pass, "Редактор доски", "пароль задан OK" if has_pass else "пароль не задан - редактор выключен"))
     host_d = settings_state.get("host_display") or ""
     rows.append(status_row(True, "Адрес на доске", host_d if host_d else "автоматический (из браузера)"))
     rows.append(status_row(True, "Сервер Харука-Арч", fama_server_name()))
     if fama_github_token():
         if fam_backup_state.get("last_error"):
-            rows.append(status_row(False, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · ошибка: {fam_backup_state['last_error']}"))
+            rows.append(status_row(False, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} - ошибка: {fam_backup_state['last_error']}"))
         elif fam_backup_state.get("last_ok"):
-            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · последний: {fam_backup_state['last_ok']}"))
+            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} - последний: {fam_backup_state['last_ok']}"))
         else:
-            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} · ждёт первого сохранения"))
+            rows.append(status_row(True, "Авто-бэкап в GitHub", f"{FAMA_GITHUB_REPO} - ждёт первого сохранения"))
     else:
-        rows.append(status_row(False, "Авто-бэкап в GitHub", "выключен — задайте FAMA_GITHUB_TOKEN"))
+        rows.append(status_row(False, "Авто-бэкап в GitHub", "выключен - задайте FAMA_GITHUB_TOKEN"))
     blocked_now = sum(1 for guard_ip in list(login_guard) if login_block_remaining(guard_ip) > 0)
-    rows.append(status_row(True, "Защита от перебора", f"заблокировано IP сейчас: {blocked_now} · лимит {LOGIN_FAIL_LIMIT} попыток за {LOGIN_FAIL_WINDOW // 60} мин"))
+    rows.append(status_row(True, "Защита от перебора", f"заблокировано IP сейчас: {blocked_now} - лимит {LOGIN_FAIL_LIMIT} попыток за {LOGIN_FAIL_WINDOW // 60} мин"))
     bot_token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
     if bot_token:
         guild = os.environ.get("FAMA_DISCORD_GUILD_ID", "").strip()
-        rows.append(status_row(True, "Discord-бот", f"включён · сервер {guild or 'все серверы (глобально)'}"))
+        rows.append(status_row(True, "Discord-бот", f"включён - сервер {guild or 'все серверы (глобально)'}"))
     else:
-        rows.append(status_row(False, "Discord-бот", "выключен — задайте DISCORD_BOT_TOKEN"))
+        rows.append(status_row(False, "Discord-бот", "выключен - задайте DISCORD_BOT_TOKEN"))
     ping = settings_state.get("ping_url") or ""
     if not ping:
         try:
